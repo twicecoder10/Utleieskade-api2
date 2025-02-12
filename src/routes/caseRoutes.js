@@ -182,7 +182,7 @@ router.patch(
 
 /**
  * @swagger
- * /cases/{caseId}/assign/{inspectorId}:
+ * /cases/assign/{caseId}/to/{inspectorId}:
  *   patch:
  *     summary: Assign a case to a an inspector
  *     security:
@@ -210,7 +210,7 @@ router.patch(
  *         description: Internal server error
  */
 router.patch(
-  "/:caseId/assign/:inspectorId",
+  "/assign/:caseId/to/:inspectorId",
   authMiddleware,
   isAdmin,
   caseController.assignCase
@@ -218,7 +218,7 @@ router.patch(
 
 /**
  * @swagger
- * /cases/{caseId}/timeline:
+ * /cases/getTimeline/{caseId}:
  *   get:
  *     summary: Get case timeline by ID
  *     security:
@@ -240,7 +240,7 @@ router.patch(
  *         description: Internal server error
  */
 router.get(
-  "/:caseId/timeline",
+  "/getTimeline/:caseId",
   authMiddleware,
   isAdmin,
   caseController.getCaseTimeline

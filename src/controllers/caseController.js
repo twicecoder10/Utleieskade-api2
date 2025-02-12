@@ -96,11 +96,6 @@ exports.getCaseTimeline = async (req, res) => {
     const { caseId } = req.params;
     const timeline = await caseService.getCaseTimeline(caseId);
 
-    if (!timeline.length) {
-      responseHandler.setError(404, "No timeline found for this case");
-      return responseHandler.send(res);
-    }
-
     responseHandler.setSuccess(
       200,
       "Case timeline retrieved successfully",

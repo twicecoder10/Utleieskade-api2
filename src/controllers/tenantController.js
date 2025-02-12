@@ -114,11 +114,6 @@ exports.getTenantTransactions = async (req, res) => {
     const { tenantId } = req.params;
     const transactions = await tenantService.getTenantTransactions(tenantId);
 
-    if (!transactions.length) {
-      responseHandler.setError(404, "No transactions found for this tenant");
-      return responseHandler.send(res);
-    }
-
     responseHandler.setSuccess(
       200,
       "Transaction history retrieved successfully",

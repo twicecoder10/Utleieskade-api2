@@ -106,7 +106,7 @@ router.get(
 
 /**
  * @swagger
- * /tenants/{tenantId}:
+ * /tenants/getTenant/{tenantId}:
  *   get:
  *     summary: Fetch tenant details by ID
  *     security:
@@ -176,7 +176,7 @@ router.get(
  *         description: Internal server error
  */
 router.get(
-  "/:tenantId",
+  "/getTenant/:tenantId",
   authMiddleware,
   isAdmin,
   tenantController.getTenantById
@@ -211,7 +211,7 @@ router.get("/export", authMiddleware, isAdmin, tenantController.exportTenants);
 
 /**
  * @swagger
- * /tenants/{tenantId}/transactions:
+ * /tenants/getTransactions/{tenantId}:
  *   get:
  *     summary: Get transaction history for a specific tenant
  *     security:
@@ -269,7 +269,7 @@ router.get("/export", authMiddleware, isAdmin, tenantController.exportTenants);
  *         description: Internal server error
  */
 router.get(
-  "/:tenantId/transactions",
+  "/getTransactions/:tenantId",
   authMiddleware,
   isAdmin,
   tenantController.getTenantTransactions
