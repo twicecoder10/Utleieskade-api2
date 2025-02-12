@@ -50,16 +50,23 @@ exports.getCaseDetails = async (req, res) => {
 exports.cancelCase = async (req, res) => {
   try {
     const { caseId } = req.params;
-    const result = await caseService.cancelCase(caseId);
+    const { cancellationReason } = req.body;
+
+    if (!cancellationReason) {
+      responseHandler.setError(400, "Cancellation reason is required.");
+      return responseHandler.send(res);
+    }
+
+    const result = await caseService.cancelCase(caseId, cancellationReason);
 
     if (!result) {
-      responseHandler.setError(404, "Case not found");
+      responseHandler.setError(404, "Case not found.");
       return responseHandler.send(res);
     }
 
     await caseService.logCaseEvent(caseId, "caseCancelled", `Case cancelled`);
 
-    responseHandler.setSuccess(200, "Case cancelled successfully");
+    responseHandler.setSuccess(200, "Case cancelled successfully.");
     return responseHandler.send(res);
   } catch (error) {
     responseHandler.setError(500, error.message);
@@ -77,7 +84,11 @@ exports.assignCase = async (req, res) => {
       return responseHandler.send(res);
     }
 
-    await caseService.logCaseEvent(caseId, "inspectorAssigned", `Inspector assigned`);
+    await caseService.logCaseEvent(
+      caseId,
+      "inspectorAssigned",
+      `Inspector assigned`
+    );
 
     responseHandler.setSuccess(
       200,

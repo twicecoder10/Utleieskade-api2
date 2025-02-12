@@ -152,9 +152,9 @@ router.get(
 
 /**
  * @swagger
- * /cases/{caseId}/cancel:
+ * /cases/cancel/{caseId}:
  *   patch:
- *     summary: Cancel a case
+ *     summary: Cancel a case with a reason
  *     security:
  *       - BearerAuth: []
  *     tags: [Cases]
@@ -165,16 +165,28 @@ router.get(
  *         schema:
  *           type: string
  *         description: Unique ID of the case
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               cancellationReason:
+ *                 type: string
+ *                 example: "Tenant requested to withdraw the case."
  *     responses:
  *       200:
  *         description: Case cancelled successfully
  *       404:
  *         description: Case not found
+ *       400:
+ *         description: Cancellation reason required
  *       500:
  *         description: Internal server error
  */
 router.patch(
-  "/:caseId/cancel",
+  "/cancel/:caseId",
   authMiddleware,
   isAdmin,
   caseController.cancelCase

@@ -21,6 +21,7 @@ const Case = sequelize.define(
       allowNull: false,
     },
     caseDescription: { type: DataTypes.STRING, allowNull: false },
+    cancellationReason: { type: DataTypes.STRING, allowNull: true },
   },
   { tableName: "Case", timestamps: true }
 );

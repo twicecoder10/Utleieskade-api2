@@ -95,16 +95,15 @@ const getCaseDetails = async (caseId) => {
   });
 };
 
-const cancelCase = async (caseId) => {
-  const caseInstance = await Case.findOne({ where: { caseId } });
-  if (!caseInstance) return null;
+const cancelCase = async (caseId, cancellationReason) => {
+  const caseToUpdate = await Case.findOne({ where: { caseId } });
 
-  caseInstance.caseStatus = "cancelled";
-  await caseInstance.save();
+  if (!caseToUpdate) return null;
 
-  return caseInstance;
+  await Case.update({ caseStatus: "cancelled", cancellationReason }, { where: { caseId } });
+
+  return { message: "Case cancelled successfully" };
 };
-
 const assignCase = async (caseId, inspectorId) => {
   const caseInstance = await Case.findOne({ where: { caseId } });
   if (!caseInstance) return null;
