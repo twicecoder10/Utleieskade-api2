@@ -22,9 +22,14 @@ const User = sequelize.define(
       type: DataTypes.ENUM("admin", "tenant", "landlord", "inspector"),
       allowNull: false,
     },
-    inspectorStatus: {
+    userGender: {
+      type: DataTypes.ENUM("male", "female", "other"),
+      allowNull: false,
+    },
+    userStatus: {
       type: DataTypes.ENUM("active", "inactive"),
-      allowNull: true,
+      defaultValue: "active",
+      allowNull: false,
     },
     inspectorExpertiseCode: { type: DataTypes.INTEGER, allowNull: true },
   },

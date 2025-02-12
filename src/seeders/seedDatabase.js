@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const {
   User,
   Case,
+  CaseTimeline,
   Damage,
   Payment,
   Assessment,
@@ -24,10 +25,25 @@ const seedDatabase = async () => {
 
     await User.bulkCreate([
       {
-        userId: "a4d32525-e0a7-4c95-82e3-990c38c338fd",
+        userId: uuidv4(),
         userFirstName: "John",
         userLastName: "Doe",
+        userEmail: "mail@mail.com",
+        userGender: "male",
+        userPhone: "+441234567890",
+        userCity: "London",
+        userAddress: "123 Main Street",
+        userPostcode: "S12 2IS",
+        userCountry: "UK",
+        userType: "admin",
+        userPassword: await bcrypt.hash("securepassword", 10),
+      },
+      {
+        userId: "a4d32525-e0a7-4c95-82e3-990c38c338fd",
+        userFirstName: "Jonathan",
+        userLastName: "Doeman",
         userEmail: "johndoe@mail.com",
+        userGender: "male",
         userPhone: "+441234567890",
         userCity: "London",
         userAddress: "123 Main Street",
@@ -41,6 +57,7 @@ const seedDatabase = async () => {
         userFirstName: "Jane",
         userLastName: "Smith",
         userEmail: "janesmith@mail.com",
+        userGender: "female",
         userPhone: "+441234567899",
         userCity: "Birmingham",
         userAddress: "456 High Street",
@@ -54,6 +71,7 @@ const seedDatabase = async () => {
         userFirstName: "Jude",
         userLastName: "Scott",
         userEmail: "judescott@mail.com",
+        userGender: "male",
         userPhone: "+441234567898",
         userCity: "Manchester",
         userPostcode: "M2 2JW",
@@ -61,7 +79,7 @@ const seedDatabase = async () => {
         userCountry: "UK",
         userType: "inspector",
         userPassword: await bcrypt.hash("password123", 10),
-        inspectorStatus: "active",
+        userStatus: "active",
         inspectorExpertiseCode: 101,
       },
     ]);
@@ -105,6 +123,27 @@ const seedDatabase = async () => {
         caseStatus: "open",
         CaseUrgencyLevel: "high",
         caseDescription: "Water leakage in the bathroom.",
+      },
+    ]);
+
+    await CaseTimeline.bulkCreate([
+      {
+        timelineId: uuidv4(),
+        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        eventType: "caseCreated",
+        eventDescription: "Case created",
+      },
+      {
+        timelineId: uuidv4(),
+        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        eventType: "inspectorAssigned",
+        eventDescription: "Inspector assigned",
+      },
+      {
+        timelineId: uuidv4(),
+        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        eventType: "inspectorAccepted",
+        eventDescription: "Inspector accepted",
       },
     ]);
 

@@ -2,6 +2,7 @@ const sequelize = require("../config/db");
 
 const User = require("./User");
 const Case = require("./Case");
+const CaseTimeline = require("./CaseTimeline");
 const Damage = require("./Damage");
 const Payment = require("./Payment");
 const Assessment = require("./Assessment");
@@ -21,7 +22,7 @@ const syncDatabase = async (force = false) => {
 };
 
 User.hasMany(Case, { foreignKey: "userId" });
-User.hasMany(Case, { foreignKey: "userId", as: "inspectedCases" });
+User.hasMany(Case, { foreignKey: "inspectorId", as: "inspectedCases" });
 User.hasMany(Assessment, { foreignKey: "userId", as: "inspectorAssessments" });
 User.hasMany(Availability, {
   foreignKey: "userId",
@@ -38,10 +39,16 @@ User.hasMany(TrackingTime, {
   as: "inspectorTrackingTime",
 });
 
-Case.belongsTo(User, { foreignKey: "userId" });
-Case.belongsTo(User, { foreignKey: "userId", as: "inspector" });
+Case.belongsTo(User, { foreignKey: "userId", as: "tenant" });
+Case.belongsTo(User, {
+  foreignKey: "inspectorId",
+  as: "inspector",
+  allowNull: true,
+});
 Case.hasMany(Assessment, { foreignKey: "caseId" });
 Case.hasMany(Payment, { foreignKey: "caseId" });
+Case.hasMany(CaseTimeline, { foreignKey: "caseId", as: "timeline" });
+CaseTimeline.belongsTo(Case, { foreignKey: "caseId" });
 
 Assessment.belongsTo(Case, { foreignKey: "caseId" });
 Assessment.belongsTo(User, { foreignKey: "userId", as: "inspector" });
@@ -52,7 +59,6 @@ BankDetails.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
 Damage.belongsTo(Property, { foreignKey: "propertyId" });
 Damage.belongsTo(Case, { foreignKey: "caseId" });
-Damage.belongsTo(Property, { foreignKey: "propertyId" });
 
 Expertise.hasMany(User, { foreignKey: "expertiseCode", as: "inspectors" });
 
@@ -69,6 +75,7 @@ module.exports = {
   syncDatabase,
   User,
   Case,
+  CaseTimeline,
   Damage,
   Payment,
   Assessment,

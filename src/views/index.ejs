@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= apiTitle %></title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 40px;
+        background-color: #f4f4f4;
+      }
+      h1 {
+        color: #333;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+      }
+      .routes {
+        margin-top: 20px;
+      }
+      a {
+        display: inline-block;
+        margin: 10px;
+        padding: 10px 20px;
+        text-decoration: none;
+        color: white;
+        background: #007bff;
+        border-radius: 5px;
+      }
+      a:hover {
+        background: #0056b3;
+      }
+      .api-docs {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1><%= apiTitle %></h1>
+      <p><strong>Version:</strong> <%= apiVersion %></p>
+
+      <div class="routes">
+        <h2>Available API Routes</h2>
+        <% apiRoutes.forEach(route => { %>
+        <a href="<%= route.path %>"><%= route.name %></a>
+        <% }) %>
+      </div>
+
+      <div class="api-docs">
+        <h2>API Documentation</h2>
+        <a href="<%= documentationUrl %>" style="background: green"
+          >View Swagger Docs</a
+        >
+      </div>
+    </div>
+  </body>
+</html>

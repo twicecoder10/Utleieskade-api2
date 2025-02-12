@@ -1,6 +1,6 @@
 const { body } = require("express-validator");
 
-const userValidationRules = () => {
+const inspectorValidationRules = () => {
   return [
     body("userFirstName")
       .notEmpty()
@@ -15,10 +15,6 @@ const userValidationRules = () => {
       .withMessage("Last name must be a string"),
 
     body("userEmail").isEmail().withMessage("Provide a valid email address"),
-
-    body("userPassword")
-      .isLength({ min: 8 })
-      .withMessage("Password must be at least 8 characters long"),
 
     body("userPhone")
       .notEmpty()
@@ -50,10 +46,12 @@ const userValidationRules = () => {
       .isString()
       .withMessage("Country must be a string"),
 
-    body("userType")
-      .isIn(["admin", "tenant", "landlord", "inspector"])
-      .withMessage("Invalid user type specified"),
+    body("inspectorExpertiseCode")
+      .notEmpty()
+      .isInt({ min: 1 })
+      .withMessage("Inspector expertise code must be a valid integer"),
+      
   ];
 };
 
-module.exports = { userValidationRules };
+module.exports = { inspectorValidationRules };

@@ -1,0 +1,189 @@
+const inspectorService = require("../services/inspectorService");
+const responseHandler = require("../utils/responseHandler");
+const { Parser } = require("json2csv");
+const PDFDocument = require("pdfkit");
+const { v4: uuidv4 } = require("uuid");
+
+exports.addInspector = async (req, res) => {
+  try {
+    const {
+      userFirstName,
+      userLastName,
+      userEmail,
+      userGender,
+      userPhone,
+      userCity,
+      userPostcode,
+      userAddress,
+      userCountry,
+      inspectorExpertiseCode,
+    } = req.body;
+
+    const inspectorData = {
+      userId: uuidv4(),
+      userFirstName: userFirstName.trim(),
+      userLastName: userLastName.trim(),
+      userEmail: userEmail.trim().toLowerCase(),
+      userGender: userGender.trim().toLowerCase(),
+      userPhone: userPhone.trim(),
+      userCity: userCity.trim(),
+      userPostcode: userPostcode.trim(),
+      userAddress: userAddress.trim(),
+      userCountry: userCountry.trim(),
+      userType: "inspector",
+      userPassword: "default",
+      inspectorExpertiseCode: inspectorExpertiseCode,
+    };
+
+    const newInspector = await inspectorService.createInspector(inspectorData);
+
+    responseHandler.setSuccess(
+      201,
+      "Inspector added successfully",
+      newInspector
+    );
+
+    return responseHandler.send(res);
+  } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      responseHandler.setError(
+        400,
+        `The ${error.errors[0].path} already exists!`
+      );
+      return responseHandler.send(res);
+    }
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.getInspectorById = async (req, res) => {
+  try {
+    const { inspectorId } = req.params;
+    const inspector = await inspectorService.getInspectorById(inspectorId);
+
+    if (!inspector) {
+      responseHandler.setError(404, "Inspector not found");
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(
+      200,
+      "Inspector details retrieved successfully",
+      inspector
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.getAllInspectors = async (req, res) => {
+  try {
+    const { search, page, limit } = req.query;
+
+    const inspectorsData = await inspectorService.getAllInspectors({
+      search,
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+    });
+
+    responseHandler.setSuccess(
+      200,
+      "Inspectors retrieved successfully",
+      inspectorsData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.exportInspectors = async (req, res) => {
+  try {
+    const { format } = req.query;
+    let inspectors = await inspectorService.exportInspectors();
+
+    if (!inspectors.length) {
+      responseHandler.setError(404, "No inspectors found to export");
+      return responseHandler.send(res);
+    }
+
+    inspectors = inspectors.map((inspector, index) => ({
+      "S/N": index + 1,
+      Name: `${inspector.firstName} ${inspector.lastName}`,
+      Email: inspector.email,
+      Phone: inspector.phone,
+      City: inspector.city,
+      Address: inspector.address,
+      Postcode: inspector.postcode,
+      Country: inspector.country,
+    }));
+
+    if (format === "csv") {
+      const json2csvParser = new Parser();
+      const csv = json2csvParser.parse(inspectors);
+
+      res.header("Content-Type", "text/csv");
+      res.attachment("inspectors.csv");
+      return res.send(csv);
+    } else if (format === "pdf") {
+      const doc = new PDFDocument({ margin: 30, size: "A4" });
+      res.header(
+        "Content-Disposition",
+        'attachment; filename="inspectors.pdf"'
+      );
+      res.header("Content-Type", "application/pdf");
+
+      doc.pipe(res);
+
+      doc.fontSize(18).text("Inspectors List", { align: "center" });
+      doc.moveDown();
+
+      const headers = Object.keys(inspectors[0]);
+
+      doc
+        .fontSize(12)
+        .fillColor("black")
+        .text(headers.join(" | "), { underline: true });
+      doc.moveDown();
+
+      inspectors.forEach((inspector) => {
+        doc.text(Object.values(inspector).join(" | "));
+      });
+
+      doc.end();
+    } else {
+      responseHandler.setError(
+        400,
+        "Invalid format. Only 'csv' or 'pdf' exports are supported."
+      );
+      return responseHandler.send(res);
+    }
+  } catch (error) {
+    console.error("Error exporting inspectors:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.deactivateInspector = async (req, res) => {
+  try {
+    const { inspectorId } = req.params;
+
+    const deactivatedInspector = await inspectorService.deactivateInspector(inspectorId);
+
+    if (!deactivatedInspector) {
+      responseHandler.setError(404, "Inspector not found");
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, "Inspector deactivated successfully");
+    return responseHandler.send(res);
+  } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
