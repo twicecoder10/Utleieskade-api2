@@ -17,8 +17,8 @@ const getTenantById = async (tenantId) => {
       ["createdAt", "dateRegistered"],
       [
         Sequelize.literal(`(
-          SELECT COUNT(*) FROM \`case\`
-          WHERE \`case\`.\`userId\` = \`User\`.\`userId\`
+          SELECT COUNT(*) FROM \`Case\`
+          WHERE \`Case\`.\`userId\` = \`User\`.\`userId\`
         )`),
         "casesSubmitted",
       ],
@@ -87,39 +87,93 @@ const exportTenants = async () => {
   });
 };
 
-const getTenantTransactions = async (tenantId) => {
-  return await Payment.findAll({
-    include: [
+const getTenantTransactions = async ({
+  tenantId,
+  search,
+  status,
+  startDate,
+  endDate,
+  page,
+  limit,
+  sortBy,
+  sortOrder,
+}) => {
+  const offset = (page - 1) * limit;
+  const whereClause = {};
+
+  if (status) {
+    whereClause.paymentStatus = status;
+  }
+
+  if (startDate && endDate) {
+    whereClause.paymentDate = {
+      [Op.between]: [new Date(startDate), new Date(endDate)],
+    };
+  } else if (startDate) {
+    whereClause.paymentDate = {
+      [Op.gte]: new Date(startDate),
+    };
+  } else if (endDate) {
+    whereClause.paymentDate = {
+      [Op.lte]: new Date(endDate),
+    };
+  }
+
+  const inspectorWhereClause = {};
+  if (search) {
+    inspectorWhereClause[Op.or] = [
       {
-        model: Case,
-        where: { userId: tenantId },
-        attributes: ["caseId"],
-        include: [
-          {
-            model: User,
-            as: "inspector",
-            attributes: [
-              [
-                Sequelize.fn(
-                  "CONCAT",
-                  Sequelize.col("userFirstName"),
-                  " ",
-                  Sequelize.col("userLastName")
-                ),
-                "inspectorName",
-              ],
-            ],
-          },
-        ],
+        $userFirstName$: { [Op.like]: `%${search}%` },
       },
-    ],
-    attributes: [
-      ["paymentAmount", "amount"],
-      ["paymentDate", "date"],
-      ["paymentStatus", "status"],
-    ],
-    order: [["paymentDate", "DESC"]],
-  });
+      {
+        $userLastName$: { [Op.like]: `%${search}%` },
+      },
+    ];
+  }
+  const { rows: transactions, count: totalTransactions } =
+    await Payment.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Case,
+          where: { userId: tenantId },
+          attributes: ["caseId"],
+          include: [
+            {
+              model: User,
+              as: "inspector",
+              where: inspectorWhereClause,
+              attributes: [
+                [
+                  Sequelize.fn(
+                    "CONCAT",
+                    Sequelize.col("userFirstName"),
+                    " ",
+                    Sequelize.col("userLastName")
+                  ),
+                  "inspectorName",
+                ],
+              ],
+            },
+          ],
+        },
+      ],
+      attributes: [
+        ["paymentAmount", "amount"],
+        ["paymentDate", "date"],
+        ["paymentStatus", "status"],
+      ],
+      limit: parseInt(limit),
+      offset,
+      order: [[sortBy, sortOrder]],
+    });
+
+  return {
+    transactions,
+    totalTransactions,
+    totalPages: Math.ceil(totalTransactions / limit),
+    currentPage: parseInt(page),
+  };
 };
 
 const deactivateTenant = async (tenantId) => {

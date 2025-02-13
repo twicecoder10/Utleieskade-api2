@@ -213,7 +213,7 @@ router.get("/export", authMiddleware, isAdmin, tenantController.exportTenants);
  * @swagger
  * /tenants/getTransactions/{tenantId}:
  *   get:
- *     summary: Get transaction history for a specific tenant
+ *     summary: Get transaction history for a specific tenant with pagination, search, and sorting
  *     security:
  *       - BearerAuth: []
  *     tags: [Tenants]
@@ -225,44 +225,59 @@ router.get("/export", authMiddleware, isAdmin, tenantController.exportTenants);
  *         schema:
  *           type: string
  *         description: The unique ID of the tenant
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search transactions by case ID or inspector name
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: ["pending", "processed", "rejected"]
+ *         description: Filter transactions by payment status
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter transactions from this date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter transactions up to this date
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         description: Number of transactions per page
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           example: "paymentDate"
+ *         description: Field to sort by (e.g., paymentDate, amount)
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: ["asc", "desc"]
+ *           example: "desc"
+ *         description: Sort order (ascending or descending)
  *     responses:
  *       200:
  *         description: Transaction history retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: "success"
- *                 message:
- *                   type: string
- *                   example: "Transaction history retrieved successfully"
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       caseId:
- *                         type: string
- *                         example: "CASE001"
- *                       inspectorName:
- *                         type: string
- *                         example: "Zack Holland"
- *                       amount:
- *                         type: string
- *                         example: "$100"
- *                       date:
- *                         type: string
- *                         format: date
- *                         example: "2025-04-12"
- *                       status:
- *                         type: string
- *                         enum: ["pending", "failed", "completed"]
- *                         example: "Completed"
  *       400:
- *         description: Authorization issues / Bad requests
+ *         description: Bad request (invalid parameters)
  *       404:
  *         description: No transactions found for the tenant
  *       500:

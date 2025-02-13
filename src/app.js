@@ -15,6 +15,7 @@ app.use(morgan("tiny"));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
 const caseRoutes = require("./routes/caseRoutes");
 const inspectorRoutes = require("./routes/inspectorRoutes");
@@ -22,6 +23,7 @@ const tenantRoutes = require("./routes/tenantRoutes");
 const paymentsRoutes = require("./routes/paymentsRoutes");
 const refundRoutes = require("./routes/refundRoutes");
 
+app.use("/admins", adminRoutes);
 app.use("/users", userRoutes);
 app.use("/cases", caseRoutes);
 app.use("/inspectors", inspectorRoutes);

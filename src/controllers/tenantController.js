@@ -112,7 +112,28 @@ exports.getTenantById = async (req, res) => {
 exports.getTenantTransactions = async (req, res) => {
   try {
     const { tenantId } = req.params;
-    const transactions = await tenantService.getTenantTransactions(tenantId);
+    const {
+      search,
+      status,
+      startDate,
+      endDate,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    } = req.query;
+
+    const transactions = await tenantService.getTenantTransactions({
+      tenantId,
+      search,
+      status,
+      startDate,
+      endDate,
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+      sortBy: sortBy || "paymentDate",
+      sortOrder: sortOrder || "desc",
+    });
 
     responseHandler.setSuccess(
       200,

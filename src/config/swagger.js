@@ -11,7 +11,7 @@ const options = {
     },
     servers: [
       {
-        url: "http://api.bcplus.scouled.com",
+        url: "https://api.bcplus.scouled.com",
         description: "Live server",
       },
       {

@@ -316,6 +316,11 @@ router.get(
  *       500:
  *         description: Internal server error
  */
-router.patch("/deactivate/:inspectorId", authMiddleware, isAdmin, inspectorController.deactivateInspector);
+router.patch(
+  "/deactivate/:inspectorId",
+  authMiddleware,
+  isAdmin,
+  inspectorController.deactivateInspector
+);
 
 module.exports = router;

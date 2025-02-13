@@ -1,6 +1,6 @@
 const { body } = require("express-validator");
 
-const userValidationRules = () => {
+const adminValidationRules = () => {
   return [
     body("userFirstName")
       .notEmpty()
@@ -49,11 +49,7 @@ const userValidationRules = () => {
       .withMessage("Country is required")
       .isString()
       .withMessage("Country must be a string"),
-
-    body("userType")
-      .isIn(["admin", "tenant", "landlord", "inspector"])
-      .withMessage("Invalid user type specified"),
   ];
 };
 
-module.exports = { userValidationRules };
+module.exports = { adminValidationRules };

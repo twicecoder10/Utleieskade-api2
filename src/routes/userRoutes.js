@@ -1,6 +1,6 @@
 const express = require("express");
 const userController = require("../controllers/userController");
-const { userValidationRules } = require("../validators/usersValidator.js");
+const { userValidationRules } = require("../validators/adminValidator.js");
 const { validate } = require("../middlewares/validate");
 const { authMiddleware } = require("../middlewares/authMiddleware");
 
@@ -12,72 +12,6 @@ const router = express.Router();
  *   name: Users
  *   description: User management
  */
-
-/**
- * @swagger
- * /users/signup:
- *   post:
- *     summary: Create a new user
- *     tags: [Users]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userFirstName:
- *                 type: string
- *                 example: "John"
- *               userLastName:
- *                 type: string
- *                 example: "Doe"
- *               userEmail:
- *                 type: string
- *                 example: "mail@mail.com"
- *               userPhone:
- *                 type: string
- *                 example: "+123456789"
- *               userPassword:
- *                 type: string
- *                 example: "securepassword"
- *               userCity:
- *                 type: string
- *                 example: "London"
- *               userPostcode:
- *                 type: string
- *                 example: "S12 2IS"
- *               userAddress:
- *                 type: string
- *                 example: "123 Main Street"
- *               userCountry:
- *                 type: string
- *                 example: "UK"
- *               userType:
- *                 type: string
- *                 enum: ["admin", "tenant", "landlord", "inspector"]
- *                 example: "inspector"
- *               userStatus:
- *                 type: string
- *                 enum: ["active", "inactive"]
- *                 example: "active"
- *               inspectorExpertiseCode:
- *                 type: integer
- *                 example: 101
- *     responses:
- *       201:
- *         description: User created successfully
- *       400:
- *         description: The user already exists!
- *       500:
- *         description: Internal server error
- */
-router.post(
-  "/signup",
-  userValidationRules(),
-  validate,
-  userController.createUser
-);
 
 /**
  * @swagger

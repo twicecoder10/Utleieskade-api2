@@ -13,18 +13,24 @@ const User = sequelize.define(
     userLastName: { type: DataTypes.STRING, allowNull: false },
     userPassword: { type: DataTypes.STRING, allowNull: false },
     userEmail: { type: DataTypes.STRING, allowNull: false, unique: true },
-    userPhone: { type: DataTypes.STRING, allowNull: false },
-    userCity: { type: DataTypes.STRING, allowNull: false },
-    userPostcode: { type: DataTypes.STRING, allowNull: false },
-    userAddress: { type: DataTypes.STRING, allowNull: false },
+    userPhone: { type: DataTypes.STRING, allowNull: true },
+    userCity: { type: DataTypes.STRING, allowNull: true },
+    userPostcode: { type: DataTypes.STRING, allowNull: true },
+    userAddress: { type: DataTypes.STRING, allowNull: true },
     userCountry: { type: DataTypes.STRING, allowNull: false },
     userType: {
-      type: DataTypes.ENUM("admin", "tenant", "landlord", "inspector"),
+      type: DataTypes.ENUM(
+        "admin",
+        "sub-admin",
+        "tenant",
+        "landlord",
+        "inspector"
+      ),
       allowNull: false,
     },
     userGender: {
       type: DataTypes.ENUM("male", "female", "other"),
-      allowNull: false,
+      allowNull: true,
     },
     userStatus: {
       type: DataTypes.ENUM("active", "inactive"),
