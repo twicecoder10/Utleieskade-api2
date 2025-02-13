@@ -11,6 +11,7 @@ const BankDetails = require("./BankDetails");
 const Expertise = require("./Expertise");
 const InspectorPayment = require("./InspectorPayment");
 const Property = require("./Property");
+const Refund = require("./Refund");
 const TrackingTime = require("./TrackingTime");
 
 const syncDatabase = async (force = false) => {
@@ -28,7 +29,6 @@ User.hasMany(Availability, {
   foreignKey: "userId",
   as: "inspectorAvailability",
 });
-User.hasMany(BankDetails, { foreignKey: "userId", as: "inspectorBankDetails" });
 User.belongsTo(Expertise, { foreignKey: "expertiseCode", as: "expertise" });
 User.hasMany(InspectorPayment, {
   foreignKey: "userId",
@@ -38,6 +38,7 @@ User.hasMany(TrackingTime, {
   foreignKey: "userId",
   as: "inspectorTrackingTime",
 });
+User.hasOne(BankDetails, { foreignKey: "userId", as: "bankDetails" });
 
 Case.belongsTo(User, { foreignKey: "userId", as: "tenant" });
 Case.belongsTo(User, {
@@ -48,6 +49,8 @@ Case.belongsTo(User, {
 Case.hasMany(Assessment, { foreignKey: "caseId" });
 Case.hasMany(Payment, { foreignKey: "caseId" });
 Case.hasMany(CaseTimeline, { foreignKey: "caseId", as: "timeline" });
+Case.hasOne(Refund, { foreignKey: "caseId", as: "refund" });
+
 CaseTimeline.belongsTo(Case, { foreignKey: "caseId" });
 
 Assessment.belongsTo(Case, { foreignKey: "caseId" });
@@ -55,18 +58,31 @@ Assessment.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
 Availability.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
-BankDetails.belongsTo(User, { foreignKey: "userId", as: "inspector" });
+BankDetails.belongsTo(User, {
+  foreignKey: "userId",
+  as: "inspector",
+});
 
 Damage.belongsTo(Property, { foreignKey: "propertyId" });
 Damage.belongsTo(Case, { foreignKey: "caseId" });
 
 Expertise.hasMany(User, { foreignKey: "expertiseCode", as: "inspectors" });
 
-InspectorPayment.belongsTo(User, { foreignKey: "userId", as: "inspector" });
+InspectorPayment.belongsTo(User, {
+  foreignKey: "inspectorId",
+  as: "inspector",
+});
+InspectorPayment.belongsTo(BankDetails, {
+  foreignKey: "inspectorId",
+  targetKey: "userId",
+  as: "bankDetails",
+});
 
 Payment.belongsTo(Case, { foreignKey: "caseId" });
 
 Property.hasMany(Damage, { foreignKey: "propertyId" });
+
+Refund.belongsTo(Case, { foreignKey: "caseId", as: "caseDetails" });
 
 TrackingTime.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
@@ -84,5 +100,6 @@ module.exports = {
   Expertise,
   InspectorPayment,
   Property,
+  Refund,
   TrackingTime,
 };

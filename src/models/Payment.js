@@ -12,10 +12,12 @@ const Payment = sequelize.define(
     paymentAmount: { type: DataTypes.STRING, allowNull: false },
     paymentDate: { type: DataTypes.DATE, allowNull: false },
     paymentStatus: {
-      type: DataTypes.ENUM("pending", "failed", "completed"),
+      type: DataTypes.ENUM("pending", "processed", "rejected"),
+      defaultValue: "pending",
       allowNull: false,
     },
     paymentDescription: { type: DataTypes.STRING, allowNull: false },
+    rejectionReason: { type: DataTypes.STRING, allowNull: true },
   },
   { tableName: "Payment", timestamps: true }
 );

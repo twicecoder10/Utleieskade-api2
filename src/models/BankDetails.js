@@ -12,7 +12,7 @@ const BankDetails = sequelize.define(
     accountNumber: { type: DataTypes.INTEGER, allowNull: false },
     sortCode: { type: DataTypes.INTEGER, allowNull: false },
     bankName: { type: DataTypes.STRING, allowNull: false },
-    inspectorId: { type: DataTypes.UUID, allowNull: false },
+    userId: { type: DataTypes.UUID, allowNull: false },
   },
   { tableName: "BankDetails", timestamps: true }
 );

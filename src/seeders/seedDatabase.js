@@ -194,7 +194,7 @@ const seedDatabase = async () => {
         accountNumber: 12345678,
         sortCode: 123456,
         bankName: "Barclays Bank",
-        inspectorId: "d232e81f-6622-4a20-817f-1ffbfbba295a",
+        userId: "d232e81f-6622-4a20-817f-1ffbfbba295a",
       },
     ]);
 

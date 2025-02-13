@@ -19,11 +19,15 @@ const userRoutes = require("./routes/userRoutes");
 const caseRoutes = require("./routes/caseRoutes");
 const inspectorRoutes = require("./routes/inspectorRoutes");
 const tenantRoutes = require("./routes/tenantRoutes");
+const paymentsRoutes = require("./routes/paymentsRoutes");
+const refundRoutes = require("./routes/refundRoutes");
 
 app.use("/users", userRoutes);
 app.use("/cases", caseRoutes);
 app.use("/inspectors", inspectorRoutes);
 app.use("/tenants", tenantRoutes);
+app.use("/payments", paymentsRoutes);
+app.use("/refunds", refundRoutes);
 
 app.use(errorMiddleware);
 
