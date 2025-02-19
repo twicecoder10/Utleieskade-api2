@@ -1,5 +1,5 @@
 const express = require("express");
-const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
 const caseController = require("../controllers/caseController");
 
 const router = express.Router();
@@ -116,8 +116,8 @@ const router = express.Router();
 router.get(
   "/getCases",
   authMiddleware,
-  isAdmin,
-  caseController.getCasesController
+  authorizeRoles("admin", "sub-admin"),
+  caseController.getCases
 );
 
 /**
@@ -146,7 +146,7 @@ router.get(
 router.get(
   "/getCase/:caseId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   caseController.getCaseDetails
 );
 
@@ -188,7 +188,7 @@ router.get(
 router.patch(
   "/cancel/:caseId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   caseController.cancelCase
 );
 
@@ -224,7 +224,7 @@ router.patch(
 router.patch(
   "/assign/:caseId/to/:inspectorId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   caseController.assignCase
 );
 
@@ -254,7 +254,7 @@ router.patch(
 router.get(
   "/getTimeline/:caseId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   caseController.getCaseTimeline
 );
 

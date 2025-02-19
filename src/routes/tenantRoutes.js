@@ -1,6 +1,6 @@
 const express = require("express");
 const tenantController = require("../controllers/tenantController");
-const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
 
 const router = express.Router();
 
@@ -100,7 +100,7 @@ const router = express.Router();
 router.get(
   "/allTenants",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   tenantController.getAllTenants
 );
 
@@ -178,7 +178,7 @@ router.get(
 router.get(
   "/getTenant/:tenantId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   tenantController.getTenantById
 );
 
@@ -207,7 +207,7 @@ router.get(
  *       500:
  *         description: Internal server error
  */
-router.get("/export", authMiddleware, isAdmin, tenantController.exportTenants);
+router.get("/export", authMiddleware, authorizeRoles("admin", "sub-admin"), tenantController.exportTenants);
 
 /**
  * @swagger
@@ -286,7 +286,7 @@ router.get("/export", authMiddleware, isAdmin, tenantController.exportTenants);
 router.get(
   "/getTransactions/:tenantId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   tenantController.getTenantTransactions
 );
 
@@ -317,7 +317,7 @@ router.get(
 router.patch(
   "/deactivate/:tenantId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   tenantController.deactivateTenant
 );
 

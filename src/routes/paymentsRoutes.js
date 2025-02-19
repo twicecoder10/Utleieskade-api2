@@ -1,5 +1,5 @@
 const express = require("express");
-const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
 const paymentsController = require("../controllers/paymentsController");
 
 const router = express.Router();
@@ -65,7 +65,7 @@ const router = express.Router();
 router.get(
   "/allPayments",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   paymentsController.getPayments
 );
 
@@ -95,7 +95,7 @@ router.get(
 router.get(
   "/getPaymentDetails/:paymentId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   paymentsController.getPaymentById
 );
 
@@ -125,7 +125,7 @@ router.get(
 router.patch(
   "/approve/:paymentId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   paymentsController.approvePayment
 );
 
@@ -165,7 +165,7 @@ router.patch(
 router.patch(
   "/reject/:paymentId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   paymentsController.rejectPayment
 );
 

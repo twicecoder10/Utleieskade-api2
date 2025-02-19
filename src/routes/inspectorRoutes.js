@@ -1,6 +1,6 @@
 const express = require("express");
 const inspectorController = require("../controllers/inspectorController");
-const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
 const {
   inspectorValidationRules,
 } = require("../validators/inspectorValidator");
@@ -77,7 +77,7 @@ const router = express.Router();
 router.post(
   "/createInspector",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   inspectorValidationRules(),
   validate,
   inspectorController.addInspector
@@ -164,7 +164,7 @@ router.post(
 router.get(
   "/getInspector/:inspectorId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   inspectorController.getInspectorById
 );
 
@@ -256,7 +256,7 @@ router.get(
 router.get(
   "/allInspectors",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   inspectorController.getAllInspectors
 );
 
@@ -288,7 +288,7 @@ router.get(
 router.get(
   "/export",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   inspectorController.exportInspectors
 );
 
@@ -319,7 +319,7 @@ router.get(
 router.patch(
   "/deactivate/:inspectorId",
   authMiddleware,
-  isAdmin,
+  authorizeRoles("admin", "sub-admin"),
   inspectorController.deactivateInspector
 );
 

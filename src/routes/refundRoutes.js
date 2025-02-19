@@ -1,5 +1,5 @@
 const express = require("express");
-const { authMiddleware, isAdmin } = require("../middlewares/authMiddleware");
+const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
 const refundController = require("../controllers/refundController");
 
 const router = express.Router();
@@ -48,7 +48,7 @@ const router = express.Router();
  *       500:
  *         description: Internal server error.
  */
-router.get("/getRefunds", authMiddleware, isAdmin, refundController.getRefunds);
+router.get("/getRefunds", authMiddleware, authorizeRoles("admin", "sub-admin"), refundController.getRefunds);
 
 /**
  * @swagger
@@ -73,7 +73,7 @@ router.get("/getRefunds", authMiddleware, isAdmin, refundController.getRefunds);
  *       500:
  *         description: Internal server error.
  */
-router.get("/getRefund/:refundId", authMiddleware, isAdmin, refundController.getRefundById);
+router.get("/getRefund/:refundId", authMiddleware, authorizeRoles("admin", "sub-admin"), refundController.getRefundById);
 
 /**
  * @swagger
@@ -98,7 +98,7 @@ router.get("/getRefund/:refundId", authMiddleware, isAdmin, refundController.get
  *       500:
  *         description: Internal server error.
  */
-router.patch("/approve/:refundId", authMiddleware, isAdmin, refundController.approveRefund);
+router.patch("/approve/:refundId", authMiddleware, authorizeRoles("admin", "sub-admin"), refundController.approveRefund);
 
 /**
  * @swagger
@@ -123,6 +123,6 @@ router.patch("/approve/:refundId", authMiddleware, isAdmin, refundController.app
  *       500:
  *         description: Internal server error.
  */
-router.patch("/reject/:refundId", authMiddleware, isAdmin, refundController.rejectRefund);
+router.patch("/reject/:refundId", authMiddleware, authorizeRoles("admin", "sub-admin"), refundController.rejectRefund);
 
 module.exports = router;

@@ -28,22 +28,17 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-const isAdmin = (req, res, next) => {
-  if (req.user.userType === "admin") {
+const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!allowedRoles.includes(req.user.userType)) {
+      responseHandler.setError(
+        403,
+        "Forbidden: You do not have permission to perform this action"
+      );
+      return responseHandler.send(res);
+    }
     next();
-  } else {
-    responseHandler.setError(403, "Access denied. Requires admin role.");
-    return responseHandler.send(res);
-  }
+  };
 };
 
-const isLandlord = (req, res, next) => {
-  if (req.user.userType === "landlord") {
-    next();
-  } else {
-    responseHandler.setError(403, "Access denied. Requires admin role.");
-    return responseHandler.send(res);
-  }
-};
-
-module.exports = { authMiddleware, isAdmin, isLandlord };
+module.exports = { authMiddleware, authorizeRoles };

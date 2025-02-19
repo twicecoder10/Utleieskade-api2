@@ -17,7 +17,7 @@ const User = sequelize.define(
     userCity: { type: DataTypes.STRING, allowNull: true },
     userPostcode: { type: DataTypes.STRING, allowNull: true },
     userAddress: { type: DataTypes.STRING, allowNull: true },
-    userCountry: { type: DataTypes.STRING, allowNull: false },
+    userCountry: { type: DataTypes.STRING, allowNull: true },
     userType: {
       type: DataTypes.ENUM(
         "admin",

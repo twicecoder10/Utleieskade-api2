@@ -1,14 +1,21 @@
 const express = require("express");
 const adminController = require("../controllers/adminController.js");
 const { adminValidationRules } = require("../validators/adminValidator.js");
+const {
+  subAdminValidationRules,
+} = require("../validators/subAdminValidator.js");
 const { validate } = require("../middlewares/validate");
+const {
+  authMiddleware,
+  authorizeRoles,
+} = require("../middlewares/roleMiddleware.js");
 
 const router = express.Router();
 
 /**
  * @swagger
  * tags:
- *   name: Admin
+ *   name: Admins
  *   description: Admin management
  */
 
@@ -17,7 +24,7 @@ const router = express.Router();
  * /admins/signup:
  *   post:
  *     summary: Create a new admin user
- *     tags: [Admin]
+ *     tags: [Admins]
  *     requestBody:
  *       required: true
  *       content:
@@ -55,9 +62,9 @@ const router = express.Router();
  *
  *     responses:
  *       201:
- *         description: User created successfully
+ *         description: Admin created successfully
  *       400:
- *         description: The user already exists!
+ *         description: The admin already exists!
  *       500:
  *         description: Internal server error
  */
@@ -66,7 +73,224 @@ router.post(
   "/signup",
   adminValidationRules(),
   validate,
-  adminController.createUser
+  adminController.createAdmin
+);
+
+/**
+ * @swagger
+ * /admins/getAdmins:
+ *   get:
+ *     summary: Retrieve all sub-admins with pagination, sorting & search
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search admins by name or email.
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive]
+ *         description: Filter admins by status.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         description: Number of admins per page.
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           example: "createdAt"
+ *         description: Field to sort by (e.g., createdAt, status).
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           example: "desc"
+ *         description: Sort order (asc or desc).
+ *     responses:
+ *       200:
+ *         description: A list of sub-admins with pagination.
+ *       500:
+ *         description: Internal server error.
+ */
+router.get(
+  "/getAdmins",
+  authMiddleware,
+  authorizeRoles("admin"),
+  adminController.getAllAdmins
+);
+
+/**
+ * @swagger
+ * /admins/getAdmin/{adminId}:
+ *   get:
+ *     summary: Get details of a specific sub-admin
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: path
+ *         name: adminId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique ID of the admin
+ *     responses:
+ *       200:
+ *         description: Admin details retrieved successfully
+ *       404:
+ *         description: Admin not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/getAdmin/:adminId",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  adminController.getAdminById
+);
+
+/**
+ * @swagger
+ * /admins/addSubAdmin:
+ *   post:
+ *     summary: Create a new sub-admin
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userFirstName
+ *               - userLastName
+ *               - userEmail
+ *               - userPassword
+ *             properties:
+ *               userFirstName:
+ *                 type: string
+ *                 example: Jason
+ *               userLastName:
+ *                 type: string
+ *                 example: Derulo
+ *               userEmail:
+ *                 type: string
+ *                 example: jd@admin.com
+ *               userPassword:
+ *                 type: string
+ *                 example: securepassword
+ *     responses:
+ *       201:
+ *         description: Sub-admin created successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/addSubAdmin",
+  authMiddleware,
+  authorizeRoles("admin"),
+  subAdminValidationRules(),
+  validate,
+  adminController.addSubAdmin
+);
+
+/**
+ * @swagger
+ * /admins/update/{adminId}:
+ *   patch:
+ *     summary: Update details of a specific sub-admin
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: path
+ *         name: adminId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique ID of the admin
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userFirstName
+ *               - userLastName
+ *               - userEmail
+ *             properties:
+ *               userFirstName:
+ *                 type: string
+ *                 example: Jason
+ *               userLastName:
+ *                 type: string
+ *                 example: Derulo
+ *               userEmail:
+ *                 type: string
+ *                 example: jd@admin.com
+ *     responses:
+ *       200:
+ *         description: Admin updated successfully
+ *       404:
+ *         description: Admin not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch(
+  "/update/:adminId",
+  authMiddleware,
+  authorizeRoles("admin"),
+  adminController.updateAdmin
+);
+
+/**
+ * @swagger
+ * /admins/delete/{adminId}:
+ *   delete:
+ *     summary: Delete a sub-admin
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: path
+ *         name: adminId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique ID of the admin
+ *     responses:
+ *       200:
+ *         description: Admin deleted successfully
+ *       404:
+ *         description: Admin not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete(
+  "/delete/:adminId",
+  authMiddleware,
+  authorizeRoles("admin"),
+  adminController.deleteAdmin
 );
 
 module.exports = router;

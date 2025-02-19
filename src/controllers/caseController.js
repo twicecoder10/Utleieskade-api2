@@ -1,7 +1,7 @@
 const caseService = require("../services/caseService");
 const responseHandler = require("../utils/responseHandler");
 
-exports.getCasesController = async (req, res) => {
+exports.getCases = async (req, res) => {
   try {
     const { search, status, page, limit, sortBy, sortOrder } = req.query;
 

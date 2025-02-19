@@ -78,7 +78,10 @@ exports.loginUser = async (req, res) => {
       );
       return responseHandler.send(res);
     }
-    if (user.userType === "inspector" && user.userStatus === "inactive") {
+    if (
+      (user.userType === "inspector" || user.userType === "sub-admin") &&
+      user.userStatus === "inactive"
+    ) {
       responseHandler.setError(
         403,
         "Inspector account is inactive. Contact support."
@@ -134,12 +137,28 @@ exports.fetchUserProfile = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    const updateData = req.body;
+    const { currentPassword, newPassword, ...updateData } = req.body;
 
     delete updateData.userId;
     delete updateData.userType;
-    delete updateData.userPassword;
     delete updateData.userStatus;
+
+    if (currentPassword && newPassword) {
+      const user = await userService.getUserById(req.user.id, true);
+
+      if (!user) {
+        responseHandler.setError(404, "User not found");
+        return responseHandler.send(res);
+      }
+
+      const isPasswordValid = bcrypt.compareSync(currentPassword, user.userPassword);
+      if (!isPasswordValid) {
+        responseHandler.setError(403, "Current password is incorrect");
+        return responseHandler.send(res);
+      }
+
+      updateData.userPassword = await bcrypt.hash(newPassword, 10);
+    }
 
     const updatedUser = await userService.updateUser(req.user.id, updateData);
 

@@ -1,8 +1,6 @@
 const express = require("express");
 const userController = require("../controllers/userController");
-const { userValidationRules } = require("../validators/adminValidator.js");
-const { validate } = require("../middlewares/validate");
-const { authMiddleware } = require("../middlewares/authMiddleware");
+const { authMiddleware } = require("../middlewares/roleMiddleware.js");
 
 const router = express.Router();
 
@@ -124,6 +122,12 @@ router.get("/fetchProfile", authMiddleware, userController.fetchUserProfile);
  *               userFirstName:
  *                 type: string
  *                 example: "Updated Name"
+ *               currentPassword:
+ *                 type: string
+ *                 example: "securepassword"
+ *               newPassword:
+ *                 type: string
+ *                 example: "newsecurepassword"
  *               userEmail:
  *                 type: string
  *                 format: email
