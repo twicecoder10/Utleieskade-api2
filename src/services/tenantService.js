@@ -1,4 +1,11 @@
-const { User, Payment, Case } = require("../models/index");
+const {
+  User,
+  Payment,
+  Case,
+  Damage,
+  DamagePhoto,
+  Property,
+} = require("../models/index");
 const { Sequelize, Op } = require("sequelize");
 
 const getTenantById = async (tenantId) => {
@@ -187,10 +194,128 @@ const deactivateTenant = async (tenantId) => {
   return tenant;
 };
 
+const getTenantDashboard = async (tenantId) => {
+  const tenant = await User.findOne({
+    where: { userId: tenantId, userType: "tenant" },
+    attributes: ["userFirstName", "userLastName"],
+  });
+
+  const activeCasesCount = await Case.count({
+    where: {
+      userId: tenantId,
+      caseStatus: { [Op.in]: ["open"] },
+    },
+  });
+
+  const requiresAttentionCount = await Case.count({
+    where: {
+      userId: tenantId,
+      caseStatus: { [Op.in]: ["open"] },
+      caseUrgencyLevel: "high",
+    },
+  });
+
+  const resolvedCasesCount = await Case.count({
+    where: {
+      userId: tenantId,
+      caseStatus: "closed",
+      // caseCompletedDate: {
+      //   [Op.gte]: Sequelize.literal("DATE_SUB(NOW(), INTERVAL 30 DAY)"),
+      // },
+    },
+  });
+
+  return {
+    welcomeMessage: `Welcome back ${tenant?.userFirstName || "User"} 👋`,
+    activeCases: {
+      count: activeCasesCount,
+      requiresAttention: requiresAttentionCount,
+    },
+    resolvedIssues: {
+      count: resolvedCasesCount,
+      // last30Days: true,
+    },
+  };
+};
+
+const getTenantCases = async (
+  userId,
+  { search, status, urgency, page, limit }
+) => {
+  const offset = (page - 1) * limit;
+  const whereClause = { userId };
+
+  if (status) {
+    whereClause.caseStatus = status;
+  }
+
+  if (urgency) {
+    whereClause.caseUrgencyLevel = urgency;
+  }
+
+  if (search) {
+    whereClause[Op.or] = [
+      { caseDescription: { [Op.like]: `%${search}%` } },
+      { "$property.propertyAddress$": { [Op.like]: `%${search}%` } },
+    ];
+  }
+
+  const { rows: cases, count: totalCases } = await Case.findAndCountAll({
+    where: whereClause,
+    attributes: [
+      "buildingNumber",
+      ["caseId", "caseID"],
+      ["caseDescription", "caseTitle"],
+      ["caseStatus", "status"],
+      ["caseUrgencyLevel", "urgency"],
+      ["createdAt", "reportedDate"],
+    ],
+    include: [
+      {
+        model: Property,
+        as: "property",
+        attributes: ["propertyAddress"],
+      },
+      {
+        model: Damage,
+        as: "damages",
+        attributes: [
+          [
+            Sequelize.fn("COUNT", Sequelize.col("damages.damageId")),
+            "numPhotos",
+          ],
+          "damageLocation",
+        ],
+        include: [
+          {
+            model: DamagePhoto,
+            as: "damagePhotos",
+            attributes: [],
+          },
+        ],
+      },
+    ],
+    group: ["Case.caseId"],
+    limit: parseInt(limit),
+    offset,
+    order: [["createdAt", "DESC"]],
+    subQuery: false,
+  });
+
+  return {
+    cases,
+    totalCases,
+    totalPages: Math.ceil(totalCases / limit),
+    currentPage: parseInt(page),
+  };
+};
+
 module.exports = {
   getAllTenants,
   getTenantTransactions,
   getTenantById,
   deactivateTenant,
   exportTenants,
+  getTenantDashboard,
+  getTenantCases,
 };

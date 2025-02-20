@@ -3,6 +3,24 @@ const responseHandler = require("../utils/responseHandler");
 const { Parser } = require("json2csv");
 const PDFDocument = require("pdfkit");
 
+exports.getTenantDashboard = async (req, res) => {
+  try {
+    const { id: userId } = req.user;
+
+    const dashboardData = await tenantService.getTenantDashboard(userId);
+
+    responseHandler.setSuccess(
+      200,
+      "Dashboard data retrieved successfully",
+      dashboardData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
 exports.getAllTenants = async (req, res) => {
   try {
     const { search, page, limit } = req.query;
@@ -161,6 +179,29 @@ exports.deactivateTenant = async (req, res) => {
     responseHandler.setSuccess(200, "Tenant deactivated successfully");
     return responseHandler.send(res);
   } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.getCases = async (req, res) => {
+  try {
+    const { search, status, urgency, page, limit } = req.query;
+
+    const filters = {
+      search: search || "",
+      status: status || null,
+      urgency: urgency || null,
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+    };
+
+    const cases = await tenantService.getTenantCases(req.user.id, filters);
+
+    responseHandler.setSuccess(200, "Cases retrieved successfully", cases);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching cases:", error);
     responseHandler.setError(500, error.message);
     return responseHandler.send(res);
   }

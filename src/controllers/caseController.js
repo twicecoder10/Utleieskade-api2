@@ -1,6 +1,25 @@
 const caseService = require("../services/caseService");
 const responseHandler = require("../utils/responseHandler");
 
+exports.reportDamage = async (req, res) => {
+  try {
+    const caseData = req.body;
+    const { id } = req.user;
+
+    const newCase = await caseService.createCase({ ...caseData, userId: id });
+
+    responseHandler.setSuccess(201, "Case created successfully", {
+      caseId: newCase.caseId,
+    });
+
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error creating case:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
 exports.getCases = async (req, res) => {
   try {
     const { search, status, page, limit, sortBy, sortOrder } = req.query;

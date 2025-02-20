@@ -9,11 +9,17 @@ const Damage = sequelize.define(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    damageArea: { type: DataTypes.STRING, allowNull: false },
-    damagePhotos: { type: DataTypes.JSON, allowNull: false },
     damageDescription: { type: DataTypes.STRING, allowNull: false },
-    propertyId: { type: DataTypes.UUID, allowNull: false },
+    damageLocation: { type: DataTypes.STRING, allowNull: false },
     caseId: { type: DataTypes.UUID, allowNull: false },
+    damageType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    damageDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
   },
   { tableName: "Damage", timestamps: true }
 );

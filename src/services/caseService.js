@@ -1,8 +1,51 @@
-const { Case, User, CaseTimeline } = require("../models/index");
+const {
+  Case,
+  User,
+  CaseTimeline,
+  Damage,
+  DamagePhoto,
+  Property,
+} = require("../models/index");
 const { Op } = require("sequelize");
 
 const createCase = async (caseData) => {
-  const newCase = await Case.create(caseData);
+  const {
+    userId,
+    propertyId,
+    buildingNumber,
+    damages,
+    caseUrgencyLevel,
+    caseDescription,
+  } = caseData;
+
+  const newCase = await Case.create({
+    userId,
+    propertyId,
+    buildingNumber,
+    caseUrgencyLevel,
+    caseDescription,
+  });
+
+  for (const damage of damages) {
+    const createdDamage = await Damage.create({
+      caseId: newCase.caseId,
+      damageLocation: damage.damageLocation,
+      damageType: damage.damageType,
+      damageDescription: damage.damageDescription,
+      damageDate: damage.damageDate,
+    });
+
+    if (damage.photos && damage.photos.length > 0) {
+      const damagePhotos = damage.photos.map((photo) => ({
+        damageId: createdDamage.damageId,
+        photoType: photo.photoType,
+        photoUrl: photo.photoUrl,
+      }));
+
+      await DamagePhoto.bulkCreate(damagePhotos);
+    }
+  }
+
   return newCase;
 };
 
@@ -13,9 +56,14 @@ const getAllCases = async ({
   limit,
   sortBy,
   sortOrder,
+  userId,
 }) => {
   const offset = (page - 1) * limit;
   const whereClause = {};
+
+  if (userId) {
+    whereClause.userId = userId;
+  }
 
   if (status) {
     whereClause.caseStatus = status;
@@ -91,6 +139,28 @@ const getCaseDetails = async (caseId) => {
         ],
         required: false,
       },
+      {
+        model: Property,
+        as: "property",
+        attributes: [
+          "propertyId",
+          "propertyType",
+          "propertyCity",
+          "propertyAddress",
+          "propertyCountry",
+        ],
+      },
+      {
+        model: Damage,
+        as: "damages",
+        include: [
+          {
+            model: DamagePhoto,
+            as: "damagePhotos",
+            required: false,
+          },
+        ],
+      },
     ],
   });
 };
@@ -100,7 +170,10 @@ const cancelCase = async (caseId, cancellationReason) => {
 
   if (!caseToUpdate) return null;
 
-  await Case.update({ caseStatus: "cancelled", cancellationReason }, { where: { caseId } });
+  await Case.update(
+    { caseStatus: "cancelled", cancellationReason },
+    { where: { caseId } }
+  );
 
   return { message: "Case cancelled successfully" };
 };

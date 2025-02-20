@@ -1,6 +1,11 @@
 const express = require("express");
-const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
+const {
+  authMiddleware,
+  authorizeRoles,
+} = require("../middlewares/roleMiddleware");
 const caseController = require("../controllers/caseController");
+const { caseValidationRules } = require("../validators/caseValidator");
+const { validate } = require("../middlewares/validate");
 
 const router = express.Router();
 
@@ -10,6 +15,80 @@ const router = express.Router();
  *   name: Cases
  *   description: Case management
  */
+
+/**
+ * @swagger
+ * /cases/report:
+ *   post:
+ *     summary: Submit a new case with multiple damages
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Cases]
+ *     description: Allows a tenant to report multiple damages under a single case, with each damage having its own photos.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               propertyId:
+ *                 type: string
+ *                 example: "8d55184c-2039-4d58-9f6f-3b2452589aab"
+ *               caseDescription:
+ *                 type: string
+ *                 example: "Multiple damages across the apartment"
+ *               caseUrgencyLevel:
+ *                 type: string
+ *                 example: "high"
+ *               buildingNumber:
+ *                 type: string
+ *                 example: "Building A"
+ *               damages:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     damageLocation:
+ *                       type: string
+ *                       example: "Kitchen"
+ *                     damageType:
+ *                       type: string
+ *                       example: "Water Leak"
+ *                     damageDescription:
+ *                       type: string
+ *                       example: "Leak from the kitchen sink causing water damage to the floor."
+ *                     damageDate:
+ *                       type: string
+ *                       format: date
+ *                       example: "2024-06-01"
+ *                     photos:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           photoType:
+ *                             type: string
+ *                             example: "overview"
+ *                           photoUrl:
+ *                             type: string
+ *                             example: "https://example.com/photos/damage1.jpg"
+ *     responses:
+ *       201:
+ *         description: Case created successfully
+ *       400:
+ *         description: Invalid input data
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/report",
+  authMiddleware,
+  authorizeRoles("tenant"),
+  caseValidationRules(),
+  validate,
+  caseController.reportDamage
+);
 
 /**
  * @swagger
@@ -146,7 +225,6 @@ router.get(
 router.get(
   "/getCase/:caseId",
   authMiddleware,
-  authorizeRoles("admin", "sub-admin"),
   caseController.getCaseDetails
 );
 

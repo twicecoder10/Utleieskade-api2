@@ -10,12 +10,10 @@ exports.createUser = async (req, res) => {
       userFirstName,
       userLastName,
       userEmail,
-      userGender,
       userPhone,
       userCity,
       userPostcode,
       userAddress,
-      userCountry,
       userType,
       userPassword,
     } = req.body;
@@ -27,14 +25,13 @@ exports.createUser = async (req, res) => {
       userFirstName: userFirstName.trim(),
       userLastName: userLastName.trim(),
       userEmail: userEmail.trim().toLowerCase(),
-      userGender: userGender.trim().toLowerCase(),
       userPhone: userPhone.trim(),
       userCity: userCity.trim(),
       userPostcode: userPostcode.trim(),
       userAddress: userAddress.trim(),
-      userCountry: userCountry.trim(),
       userType,
       userPassword: hashedPassword,
+      isVerified: false,
     };
 
     const newUser = await userService.createUser(userData);
@@ -43,6 +40,7 @@ exports.createUser = async (req, res) => {
     responseHandler.setSuccess(201, "User created successfully", {
       token,
       userType: newUser.userType,
+      isVerified: newUser.isVerified,
     });
 
     return responseHandler.send(res);
@@ -71,6 +69,7 @@ exports.loginUser = async (req, res) => {
     const user = await userService.fetchUserByEmail(
       userEmail.trim().toLowerCase()
     );
+
     if (!user) {
       responseHandler.setError(
         401,
@@ -78,6 +77,7 @@ exports.loginUser = async (req, res) => {
       );
       return responseHandler.send(res);
     }
+
     if (
       (user.userType === "inspector" || user.userType === "sub-admin") &&
       user.userStatus === "inactive"
@@ -107,6 +107,7 @@ exports.loginUser = async (req, res) => {
     responseHandler.setSuccess(200, "User logged in successfully", {
       token,
       userType: user.userType,
+      isVerified: user.isVerified,
     });
 
     return responseHandler.send(res);
@@ -151,7 +152,10 @@ exports.updateUser = async (req, res) => {
         return responseHandler.send(res);
       }
 
-      const isPasswordValid = bcrypt.compareSync(currentPassword, user.userPassword);
+      const isPasswordValid = bcrypt.compareSync(
+        currentPassword,
+        user.userPassword
+      );
       if (!isPasswordValid) {
         responseHandler.setError(403, "Current password is incorrect");
         return responseHandler.send(res);

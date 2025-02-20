@@ -22,6 +22,8 @@ const inspectorRoutes = require("./routes/inspectorRoutes");
 const tenantRoutes = require("./routes/tenantRoutes");
 const paymentsRoutes = require("./routes/paymentsRoutes");
 const refundRoutes = require("./routes/refundRoutes");
+const otpRoutes = require("./routes/otpRoutes");
+const fileRoutes = require("./routes/fileRoutes");
 
 app.use("/admins", adminRoutes);
 app.use("/users", userRoutes);
@@ -30,6 +32,8 @@ app.use("/inspectors", inspectorRoutes);
 app.use("/tenants", tenantRoutes);
 app.use("/payments", paymentsRoutes);
 app.use("/refunds", refundRoutes);
+app.use("/otp", otpRoutes);
+app.use("/files", fileRoutes);
 
 app.use(errorMiddleware);
 

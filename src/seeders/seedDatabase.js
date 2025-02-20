@@ -6,6 +6,7 @@ const {
   Case,
   CaseTimeline,
   Damage,
+  DamagePhoto,
   Payment,
   Assessment,
   Availability,
@@ -36,6 +37,7 @@ const seedDatabase = async () => {
         userPostcode: "S12 2IS",
         userCountry: "UK",
         userType: "admin",
+        isVerified: true,
         userPassword: await bcrypt.hash("securepassword", 10),
       },
       {
@@ -50,6 +52,7 @@ const seedDatabase = async () => {
         userPostcode: "S12 2IS",
         userCountry: "UK",
         userType: "tenant",
+        isVerified: true,
         userPassword: await bcrypt.hash("password123", 10),
       },
       {
@@ -64,6 +67,7 @@ const seedDatabase = async () => {
         userPostcode: "B10 5TW",
         userCountry: "UK",
         userType: "landlord",
+        isVerified: true,
         userPassword: await bcrypt.hash("password123", 10),
       },
       {
@@ -80,6 +84,7 @@ const seedDatabase = async () => {
         userType: "inspector",
         userPassword: await bcrypt.hash("password123", 10),
         userStatus: "active",
+        isVerified: true,
         inspectorExpertiseCode: 101,
       },
     ]);
@@ -99,7 +104,7 @@ const seedDatabase = async () => {
 
     await Property.bulkCreate([
       {
-        propertyId: uuidv4(),
+        propertyId: "8d55184c-2039-4d58-9f6f-3b2452589aab",
         propertyType: "Apartment",
         propertyCity: "London",
         propertyAddress: "12 Baker Street",
@@ -119,6 +124,7 @@ const seedDatabase = async () => {
         caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
         CaseCompletedDate: null,
         userId: "a4d32525-e0a7-4c95-82e3-990c38c338fd",
+        propertyId: "8d55184c-2039-4d58-9f6f-3b2452589aab",
         inspectorId: "d232e81f-6622-4a20-817f-1ffbfbba295a",
         caseStatus: "open",
         CaseUrgencyLevel: "high",
@@ -147,14 +153,32 @@ const seedDatabase = async () => {
       },
     ]);
 
+    const damage1Id = uuidv4();
+
     await Damage.bulkCreate([
       {
-        damageId: uuidv4(),
-        damageArea: "Bathroom",
-        damagePhotos: JSON.stringify(["photo1.jpg", "photo2.jpg"]),
+        damageId: damage1Id,
+        damageLocation: "Bathroom",
+        damageType: "Water Leak",
         damageDescription: "Severe water leakage near the sink.",
         propertyId: "cecba28f-fc8d-45e7-b46b-5400c58b088f",
         caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        damageDate: new Date(),
+      },
+    ]);
+
+    await DamagePhoto.bulkCreate([
+      {
+        photoId: uuidv4(),
+        damageId: damage1Id,
+        photoType: "Overview",
+        photoUrl: "https://example.com/bathroom_overview.jpg",
+      },
+      {
+        photoId: uuidv4(),
+        damageId: damage1Id,
+        photoType: "Close-up",
+        photoUrl: "https://example.com/bathroom_closeup.jpg",
       },
     ]);
 

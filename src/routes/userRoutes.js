@@ -1,6 +1,8 @@
 const express = require("express");
 const userController = require("../controllers/userController");
 const { authMiddleware } = require("../middlewares/roleMiddleware.js");
+const { userValidationRules } = require("../validators/userValidator.js");
+const { validate } = require("../middlewares/validate");
 
 const router = express.Router();
 
@@ -10,6 +12,66 @@ const router = express.Router();
  *   name: Users
  *   description: User management
  */
+
+/**
+ * @swagger
+ * /users/signup:
+ *   post:
+ *     summary: Create a new user
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userFirstName:
+ *                 type: string
+ *                 example: "John"
+ *               userLastName:
+ *                 type: string
+ *                 example: "Doe"
+ *               userEmail:
+ *                 type: string
+ *                 example: "mail@mail.com"
+ *               userPhone:
+ *                 type: string
+ *                 example: "+123456789"
+ *               userPassword:
+ *                 type: string
+ *                 example: "securepassword"
+ *               userCity:
+ *                 type: string
+ *                 example: "London"
+ *               userPostcode:
+ *                 type: string
+ *                 example: "S12 2IS"
+ *               userAddress:
+ *                 type: string
+ *                 example: "123 Main Street"
+ *               userCountry:
+ *                 type: string
+ *                 example: "UK"
+ *               userType:
+ *                 type: string
+ *                 example: "landlord"
+ *
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       400:
+ *         description: The user already exists!
+ *       500:
+ *         description: Internal server error
+ */
+
+router.post(
+  "/signup",
+  userValidationRules(),
+  validate,
+  userController.createUser
+);
 
 /**
  * @swagger

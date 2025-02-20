@@ -13,6 +13,8 @@ const InspectorPayment = require("./InspectorPayment");
 const Property = require("./Property");
 const Refund = require("./Refund");
 const TrackingTime = require("./TrackingTime");
+const Otp = require("./Otp");
+const DamagePhoto = require("./DamagePhoto");
 
 const syncDatabase = async (force = false) => {
   try {
@@ -46,6 +48,8 @@ Case.belongsTo(User, {
   as: "inspector",
   allowNull: true,
 });
+Case.belongsTo(Property, { foreignKey: "propertyId", as: "property" });
+Case.hasMany(Damage, { foreignKey: "caseId", as: "damages" });
 Case.hasMany(Assessment, { foreignKey: "caseId" });
 Case.hasMany(Payment, { foreignKey: "caseId" });
 Case.hasMany(CaseTimeline, { foreignKey: "caseId", as: "timeline" });
@@ -63,8 +67,8 @@ BankDetails.belongsTo(User, {
   as: "inspector",
 });
 
-Damage.belongsTo(Property, { foreignKey: "propertyId" });
 Damage.belongsTo(Case, { foreignKey: "caseId" });
+Damage.hasMany(DamagePhoto, { foreignKey: "damageId", as: "damagePhotos" });
 
 Expertise.hasMany(User, { foreignKey: "expertiseCode", as: "inspectors" });
 
@@ -80,7 +84,7 @@ InspectorPayment.belongsTo(BankDetails, {
 
 Payment.belongsTo(Case, { foreignKey: "caseId" });
 
-Property.hasMany(Damage, { foreignKey: "propertyId" });
+Property.hasMany(Case, { foreignKey: "propertyId", as: "cases" });
 
 Refund.belongsTo(Case, { foreignKey: "caseId", as: "caseDetails" });
 
@@ -102,4 +106,6 @@ module.exports = {
   Property,
   Refund,
   TrackingTime,
+  Otp,
+  DamagePhoto,
 };

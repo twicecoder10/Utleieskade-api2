@@ -1,6 +1,11 @@
 const express = require("express");
 const tenantController = require("../controllers/tenantController");
-const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
+const {
+  authMiddleware,
+  authorizeRoles,
+} = require("../middlewares/roleMiddleware");
+const { caseValidationRules } = require("../validators/caseValidator");
+const { validate } = require("../middlewares/validate");
 
 const router = express.Router();
 
@@ -207,7 +212,12 @@ router.get(
  *       500:
  *         description: Internal server error
  */
-router.get("/export", authMiddleware, authorizeRoles("admin", "sub-admin"), tenantController.exportTenants);
+router.get(
+  "/export",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  tenantController.exportTenants
+);
 
 /**
  * @swagger
@@ -317,8 +327,116 @@ router.get(
 router.patch(
   "/deactivate/:tenantId",
   authMiddleware,
-  authorizeRoles("admin", "sub-admin"),
+  authorizeRoles("admin"),
   tenantController.deactivateTenant
+);
+
+/**
+ * @swagger
+ * /tenants/dashboard:
+ *   get:
+ *     summary: Fetch tenant dashboard data
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Tenants]
+ *     description: Get the data for the tenant's dashboard.
+ *     responses:
+ *       200:
+ *         description: Dashboard data retrieved successfully.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.get(
+  "/dashboard",
+  authMiddleware,
+  authorizeRoles("tenant"),
+  tenantController.getTenantDashboard
+);
+
+/**
+ * @swagger
+ * /tenants/getCases:
+ *   get:
+ *     summary: Retrieve all tenant cases with pagination, filtering & search
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Tenants]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search cases by title or description.
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [open, closed, cancelled]
+ *         description: Filter cases by status.
+ *       - in: query
+ *         name: urgency
+ *         schema:
+ *           type: string
+ *           enum: [high, moderate, low]
+ *         description: Filter cases by urgency level.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         description: Number of cases per page.
+ *     responses:
+ *       200:
+ *         description: Cases retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 cases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       caseId:
+ *                         type: string
+ *                         example: "c82e1234-56ab-7890-defg-12hi345j678k"
+ *                       caseTitle:
+ *                         type: string
+ *                         example: "Kitchen Sink Leak"
+ *                       location:
+ *                         type: string
+ *                         example: "Unit 304 - Kitchen"
+ *                       reportedDate:
+ *                         type: string
+ *                         example: "Reported 2 days ago"
+ *                       numPhotos:
+ *                         type: integer
+ *                         example: 3
+ *                       urgency:
+ *                         type: string
+ *                         enum: ["high", "moderate", "low"]
+ *                         example: "high"
+ *                       status:
+ *                         type: string
+ *                         enum: ["open", "cancelled", "closed"]
+ *                         example: "open"
+ *       500:
+ *         description: Internal server error.
+ */
+router.get(
+  "/getCases",
+  authMiddleware,
+  authorizeRoles("tenant"),
+  tenantController.getCases
 );
 
 module.exports = router;

@@ -33,6 +33,7 @@ exports.createAdmin = async (req, res) => {
       userCountry: userCountry.trim(),
       userType: "admin",
       userPassword: hashedPassword,
+      isVerified: true,
     };
 
     const newUser = await userService.createUser(userData);
@@ -80,6 +81,7 @@ exports.addSubAdmin = async (req, res) => {
       firstName: newUser.userFirstName,
       lastName: newUser.userLastName,
       email: newUser.userEmail,
+      isVerified: true,
     });
 
     return responseHandler.send(res);

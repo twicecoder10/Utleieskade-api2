@@ -37,6 +37,7 @@ const User = sequelize.define(
       defaultValue: "active",
       allowNull: false,
     },
+    isVerified: {type: DataTypes.BOOLEAN, defaultValue: false},
     inspectorExpertiseCode: { type: DataTypes.INTEGER, allowNull: true },
   },
   { tableName: "User", timestamps: true }
