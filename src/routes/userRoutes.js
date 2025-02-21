@@ -206,4 +206,98 @@ router.get("/fetchProfile", authMiddleware, userController.fetchUserProfile);
  */
 router.put("/update", authMiddleware, userController.updateUser);
 
+/**
+ * @swagger
+ * /users/send-password-reset-email:
+ *   post:
+ *     summary: Send a password reset email
+ *     tags: [Users]
+ *     description: Sends a password reset link to the user's email address.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userEmail:
+ *                 type: string
+ *                 example: "mail@mail.com"
+ *     responses:
+ *       200:
+ *         description: Password reset email sent successfully.
+ *       400:
+ *         description: Email is required or user does not exist.
+ *       500:
+ *         description: Internal server error.
+ */
+router.post(
+  "/send-password-reset-email",
+  userController.sendPasswordResetEmail
+);
+
+/**
+ * @swagger
+ * /users/verify-password-reset-link:
+ *   get:
+ *     summary: Verify password reset link
+ *     tags: [Users]
+ *     description: Checks if the password reset link (token) is valid and redirects user accordingly.
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The token received in the password reset email.
+ *     responses:
+ *       302:
+ *         description: Redirects to the password reset page.
+ *       400:
+ *         description: No token provided.
+ *       401:
+ *         description: Invalid or expired token.
+ *       500:
+ *         description: Internal server error.
+ */
+router.get("/verify-password-reset-link", userController.verifyPasswordReset);
+
+/**
+ * @swagger
+ * /users/reset-password:
+ *   put:
+ *     summary: Reset user password
+ *     tags: [Users]
+ *     description: Allows users to reset their password using a verified token.
+ *     parameters:
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The token received in the password reset email.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userPassword:
+ *                 type: string
+ *                 example: "newsecurepassword"
+ *     responses:
+ *       200:
+ *         description: Password updated successfully.
+ *       400:
+ *         description: Password is required or reset request not made.
+ *       401:
+ *         description: Invalid or expired token.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.put("/reset-password", userController.updatePassword);
+
 module.exports = router;

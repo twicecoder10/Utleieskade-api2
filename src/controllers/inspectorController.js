@@ -57,6 +57,24 @@ exports.addInspector = async (req, res) => {
   }
 };
 
+exports.getTenantDashboard = async (req, res) => {
+  try {
+    const { id: userId } = req.user;
+
+    const dashboardData = await inspectorService.getInspectorDasboard(userId);
+
+    responseHandler.setSuccess(
+      200,
+      "Dashboard data retrieved successfully",
+      dashboardData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
 exports.getInspectorById = async (req, res) => {
   try {
     const { inspectorId } = req.params;
@@ -173,7 +191,9 @@ exports.deactivateInspector = async (req, res) => {
   try {
     const { inspectorId } = req.params;
 
-    const deactivatedInspector = await inspectorService.deactivateInspector(inspectorId);
+    const deactivatedInspector = await inspectorService.deactivateInspector(
+      inspectorId
+    );
 
     if (!deactivatedInspector) {
       responseHandler.setError(404, "Inspector not found");
@@ -183,6 +203,31 @@ exports.deactivateInspector = async (req, res) => {
     responseHandler.setSuccess(200, "Inspector deactivated successfully");
     return responseHandler.send(res);
   } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.getInspectorCases = async (req, res) => {
+  try {
+    const { search, status, page, limit, sortBy, sortOrder } = req.query;
+
+    const filters = {
+      search: search || "",
+      status: status || null,
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 10,
+      sortBy: sortBy || "createdAt",
+      sortOrder: sortOrder === "asc" ? "ASC" : "DESC",
+      userId: req.user.id,
+    };
+
+    const cases = await inspectorService.getInspectorCases(filters);
+
+    responseHandler.setSuccess(200, "Cases retrieved successfully", cases);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching cases:", error);
     responseHandler.setError(500, error.message);
     return responseHandler.send(res);
   }

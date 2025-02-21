@@ -4,8 +4,6 @@ const {
   authMiddleware,
   authorizeRoles,
 } = require("../middlewares/roleMiddleware");
-const { caseValidationRules } = require("../validators/caseValidator");
-const { validate } = require("../middlewares/validate");
 
 const router = express.Router();
 

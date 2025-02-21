@@ -1,6 +1,9 @@
 const express = require("express");
 const inspectorController = require("../controllers/inspectorController");
-const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
+const {
+  authMiddleware,
+  authorizeRoles,
+} = require("../middlewares/roleMiddleware");
 const {
   inspectorValidationRules,
 } = require("../validators/inspectorValidator");
@@ -81,6 +84,30 @@ router.post(
   inspectorValidationRules(),
   validate,
   inspectorController.addInspector
+);
+
+/**
+ * @swagger
+ * /inspectors/dashboard:
+ *   get:
+ *     summary: Fetch inspector dashboard data
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     description: Get the data for the inspector's dashboard.
+ *     responses:
+ *       200:
+ *         description: Dashboard data retrieved successfully.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.get(
+  "/dashboard",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getTenantDashboard
 );
 
 /**
@@ -258,6 +285,115 @@ router.get(
   authMiddleware,
   authorizeRoles("admin", "sub-admin"),
   inspectorController.getAllInspectors
+);
+
+/**
+ * @swagger
+ * /inspectors/getCases:
+ *   get:
+ *     summary: Retrieve all inspector cases with pagination, sorting & search
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search cases by description.
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filter cases by status (open, closed).
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: Page number for pagination.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         description: Number of cases per page.
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           example: "createdAt"
+ *         description: Field to sort by (e.g., createdAt, caseStatus).
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           example: "desc"
+ *         description: Sort order (asc or desc).
+ *     responses:
+ *       200:
+ *         description: A list of inspector cases with pagination.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 cases:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       caseID:
+ *                         type: string
+ *                         example: "1234"
+ *                       caseDescription:
+ *                         type: string
+ *                         example: "Water leakage issue"
+ *                       status:
+ *                         type: string
+ *                         example: "open"
+ *                       tenant:
+ *                         type: object
+ *                         properties:
+ *                           tenantId:
+ *                             type: string
+ *                             example: "5678"
+ *                           userFirstName:
+ *                             type: string
+ *                             example: "John"
+ *                           userLastName:
+ *                             type: string
+ *                             example: "Doe"
+ *                       inspector:
+ *                         type: object
+ *                         properties:
+ *                           inspectorId:
+ *                             type: string
+ *                             example: "9876"
+ *                           userFirstName:
+ *                             type: string
+ *                             example: "Alice"
+ *                           userLastName:
+ *                             type: string
+ *                             example: "Smith"
+ *                 totalCases:
+ *                   type: integer
+ *                   example: 100
+ *                 totalPages:
+ *                   type: integer
+ *                   example: 10
+ *                 currentPage:
+ *                   type: integer
+ *                   example: 1
+ *       500:
+ *         description: Internal server error.
+ */
+router.get(
+  "/getCases",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getInspectorCases
 );
 
 /**

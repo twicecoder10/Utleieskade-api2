@@ -32,12 +32,17 @@ const User = sequelize.define(
       type: DataTypes.ENUM("male", "female", "other"),
       allowNull: true,
     },
+    userProfilePic: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     userStatus: {
       type: DataTypes.ENUM("active", "inactive"),
       defaultValue: "active",
       allowNull: false,
     },
-    isVerified: {type: DataTypes.BOOLEAN, defaultValue: false},
+    isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
+    token: { type: DataTypes.STRING, allowNull: true },
     inspectorExpertiseCode: { type: DataTypes.INTEGER, allowNull: true },
   },
   { tableName: "User", timestamps: true }

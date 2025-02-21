@@ -18,9 +18,9 @@ const getRefunds = async ({
     whereClause[Op.or] = [
       { "$caseDetails.caseId$": { [Op.like]: `%${search}%` } },
       { "$caseDetails.caseDescription$": { [Op.like]: `%${search}%` } },
-      { "$customer.userFirstName$": { [Op.like]: `%${search}%` } },
-      { "$customer.userLastName$": { [Op.like]: `%${search}%` } },
-      { "$customer.userEmail$": { [Op.like]: `%${search}%` } },
+      { "$caseDetails.tenant.userFirstName$": { [Op.like]: `%${search}%` } },
+      { "$caseDetails.tenant.userLastName$": { [Op.like]: `%${search}%` } },
+      { "$caseDetails.tenant.userEmail$": { [Op.like]: `%${search}%` } },
     ];
   }
 

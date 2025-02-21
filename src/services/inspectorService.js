@@ -1,8 +1,32 @@
-const { User } = require("../models/index");
+const { User, Case, InspectorPayment } = require("../models/index");
 const { Op } = require("sequelize");
 
 const createInspector = async (inspectorData) => {
   return await User.create(inspectorData);
+};
+
+const getInspectorDasboard = async (inspectorId) => {
+  const inspector = await User.findOne({
+    where: { userId: inspectorId, userType: "inspector" },
+    attributes: ["userFirstName", "userLastName"],
+  });
+
+  const activeCases = await Case.count({
+    where: {
+      inspectorId,
+      caseStatus: "open",
+    },
+  });
+
+  const totalEarnings = await InspectorPayment.sum("paymentAmount", {
+    where: { inspectorId },
+  });
+
+  return {
+    welcomeMessage: `Welcome back ${inspector?.userFirstName || "User"} 👋`,
+    totalEarnings,
+    activeCases,
+  };
 };
 
 const getInspectorById = async (inspectorId) => {
@@ -73,10 +97,64 @@ const deactivateInspector = async (inspectorId) => {
   return inspector;
 };
 
+const getInspectorCases = async ({
+  search,
+  status,
+  page,
+  limit,
+  sortBy,
+  sortOrder,
+  userId,
+}) => {
+  const offset = (page - 1) * limit;
+  const whereClause = { inspectorId: userId };
+
+  if (status) {
+    whereClause.caseStatus = status;
+  }
+
+  if (search) {
+    whereClause.caseDescription = { [Op.like]: `%${search}%` };
+  }
+
+  const { rows: cases, count: totalCases } = await Case.findAndCountAll({
+    where: whereClause,
+    attributes: [
+      ["caseId", "caseID"],
+      ["caseDescription", "caseDescription"],
+      ["caseStatus", "status"],
+    ],
+    include: [
+      {
+        model: User,
+        as: "tenant",
+        attributes: [
+          ["userId", "tenantId"],
+          "userFirstName",
+          "userLastName",
+          "userProfilePic",
+        ],
+      },
+    ],
+    limit: parseInt(limit),
+    offset,
+    order: [[sortBy, sortOrder]],
+  });
+
+  return {
+    cases,
+    totalCases,
+    totalPages: Math.ceil(totalCases / limit),
+    currentPage: parseInt(page),
+  };
+};
+
 module.exports = {
   getInspectorById,
   getAllInspectors,
   createInspector,
   exportInspectors,
   deactivateInspector,
+  getInspectorDasboard,
+  getInspectorCases,
 };
