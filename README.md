@@ -86,8 +86,6 @@ The API is documented using **Swagger**. See the table below for web socket docs
 | `markAsRead`     | Marks messages in a conversation as read.       | `{ "conversationId": "conv-789", "userId": "user-123" }`                                       |
 | `disconnect`     | Disconnects the user from the WebSocket server. | `{}`                                                                                           |
 
-disconnect Disconnects the user from the WebSocket server. {}
-
 ### 📌 Access Swagger UI:
 
 - **Local Development:** [http://localhost:4000/api-docs](http://localhost:4000/api-docs)
