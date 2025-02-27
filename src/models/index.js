@@ -21,6 +21,11 @@ const PrivacyPolicySettings = require("./PrivacyPolicySettings");
 
 const syncDatabase = async (force = false) => {
   try {
+    if (force) {
+      console.log("⚠️ Dropping all tables...");
+      await sequelize.getQueryInterface().dropAllTables();
+      console.log("✅ All tables dropped successfully.");
+    }
     await sequelize.sync({ alter: true, force });
   } catch (err) {
     throw err;
@@ -66,22 +71,22 @@ Case.belongsTo(User, {
   allowNull: true,
 });
 Case.belongsTo(Property, { foreignKey: "propertyId", as: "property" });
-Case.hasMany(Damage, { foreignKey: "caseId", as: "damages" });
-Case.hasMany(Report, { foreignKey: "caseId", as: "reports" });
-Case.hasMany(Payment, { foreignKey: "caseId" });
-Case.hasMany(CaseTimeline, { foreignKey: "caseId", as: "timeline" });
-Case.hasOne(Refund, { foreignKey: "caseId", as: "refund" });
+Case.hasMany(Damage, { foreignKey: "caseId", as: "damages", onDelete: "CASCADE" });
+Case.hasMany(Report, { foreignKey: "caseId", as: "reports", onDelete: "CASCADE" });
+Case.hasMany(Payment, { foreignKey: "caseId", onDelete: "CASCADE" });
+Case.hasMany(CaseTimeline, { foreignKey: "caseId", as: "timeline", onDelete: "CASCADE" });
+Case.hasOne(Refund, { foreignKey: "caseId", as: "refund", onDelete: "CASCADE" });
 
-CaseTimeline.belongsTo(Case, { foreignKey: "caseId" });
+CaseTimeline.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 
-Report.belongsTo(Case, { foreignKey: "caseId" });
+Report.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 Report.belongsTo(User, { foreignKey: "inspectorId", as: "inspector" });
 
 Availability.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
 BankDetails.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
-Damage.belongsTo(Case, { foreignKey: "caseId" });
+Damage.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 Damage.hasMany(DamagePhoto, { foreignKey: "damageId", as: "damagePhotos" });
 
 Report.hasMany(ReportPhoto, {
@@ -101,11 +106,11 @@ InspectorPayment.belongsTo(BankDetails, {
   as: "bankDetails",
 });
 
-Payment.belongsTo(Case, { foreignKey: "caseId" });
+Payment.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 
 Property.hasMany(Case, { foreignKey: "propertyId", as: "cases" });
 
-Refund.belongsTo(Case, { foreignKey: "caseId", as: "caseDetails" });
+Refund.belongsTo(Case, { foreignKey: "caseId", as: "caseDetails", onDelete: "CASCADE" });
 
 TrackingTime.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 

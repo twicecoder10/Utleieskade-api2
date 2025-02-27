@@ -314,3 +314,21 @@ exports.updateInspectorSettings = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.deleteInspector = async (req, res) => {
+  try {
+    const deletedInspector = await inspectorService.deleteInspector(
+      req.user.id
+    );
+
+    if (!deletedInspector) {
+      responseHandler.setError(404, "Inspector not found");
+      return responseHandler.send(res);
+    }
+    responseHandler.setSuccess(200, "Inspector deleted successfully");
+    return responseHandler.send(res);
+  } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};

@@ -5,6 +5,7 @@ const {
   Damage,
   DamagePhoto,
   Property,
+  PrivacyPolicySettings,
 } = require("../models/index");
 const { Sequelize, Op } = require("sequelize");
 
@@ -310,6 +311,64 @@ const getTenantCases = async (
   };
 };
 
+const getTenantSettings = async (tenantId) => {
+  const tenant = await User.findOne({
+    where: { userId: tenantId },
+    attributes: [
+      "userFirstName",
+      "userLastName",
+      "userEmail",
+      "userPhone",
+      "userProfilePic",
+    ],
+    include: [
+      {
+        model: PrivacyPolicySettings,
+        as: "privacyPolicy",
+        attributes: ["essentialCookies", "thirdPartySharing"],
+      },
+    ],
+  });
+
+  if (!tenant) return null;
+
+  return {
+    account: {
+      userFirstName: tenant.userFirstName,
+      userLastName: tenant.userLastName,
+      userEmail: tenant.userEmail,
+      userPhone: tenant.userPhone,
+      userProfilePic: tenant.userProfilePic,
+    },
+    privacySecurity: tenant.privacyPolicy,
+  };
+};
+
+const updateTenantSettings = async (tenantId, data) => {
+  const { privacyPolicy } = data;
+
+  const tenant = await User.findOne({
+    where: { userId: tenantId },
+  });
+
+  if (!tenant) {
+    return { success: false, message: "Tenant not found" };
+  }
+
+  if (privacyPolicy) {
+    await PrivacyPolicySettings.update(
+      { ...privacyPolicy },
+      { where: { userId: tenantId } }
+    );
+    return {
+      success: true,
+      message: "Tenant settings updated successfully",
+    };
+  }
+
+  return { success: false, message: "No setting updated" };
+};
+
 module.exports = {
   getAllTenants,
   getTenantTransactions,
@@ -318,4 +377,6 @@ module.exports = {
   exportTenants,
   getTenantDashboard,
   getTenantCases,
+  getTenantSettings,
+  updateTenantSettings,
 };

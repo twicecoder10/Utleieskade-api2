@@ -349,6 +349,16 @@ const updateInspectorSettings = async (inspectorId, data) => {
   return { success: true, message: "Inspector settings updated successfully" };
 };
 
+const deleteInspector = async (inspectorId) => {
+  const inspector = await User.findOne({
+    where: { userId: inspectorId, userType: "inspector" },
+  });
+  if (!inspector) return null;
+
+  await inspector.destroy();
+  return inspector;
+};
+
 module.exports = {
   getInspectorById,
   getAllInspectors,
@@ -361,4 +371,5 @@ module.exports = {
   requestPayout,
   getInspectorSettings,
   updateInspectorSettings,
+  deleteInspector
 };

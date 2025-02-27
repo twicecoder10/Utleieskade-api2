@@ -300,6 +300,93 @@ router.get(
 
 /**
  * @swagger
+ * /tenants/settings:
+ *   get:
+ *     summary: Get tenant settings
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Tenants]
+ *     description: Retrieve the current settings of an tenant.
+ *     responses:
+ *       200:
+ *         description: Tenant settings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account:
+ *                   type: object
+ *                   properties:
+ *                     userFirstName:
+ *                       type: string
+ *                     userLastName:
+ *                       type: string
+ *                     userEmail:
+ *                       type: string
+ *                     userPhone:
+ *                       type: string
+ *                     userProfilePic:
+ *                       type: string
+ *                 privacyPolicy:
+ *                   type: object
+ *                   properties:
+ *                     essentialCookies:
+ *                       type: boolean
+ *                     thirdPartySharing:
+ *                       type: boolean
+ *       401:
+ *         description: Unauthorized - Missing or invalid token
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/settings",
+  authMiddleware,
+  authorizeRoles("tenant"),
+  tenantController.getTenantSettings
+);
+
+/**
+ * @swagger
+ * /tenants/settings:
+ *   put:
+ *     summary: Update tenant settings
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Tenants]
+ *     description: Allows a tenant to update their settings.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               privacyPolicy:
+ *                 type: object
+ *                 properties:
+ *                   essentialCookies:
+ *                     type: boolean
+ *                   thirdPartySharing:
+ *                     type: boolean
+ *     responses:
+ *       200:
+ *         description: Tenant settings updated successfully
+ *       400:
+ *         description: Invalid input data
+ *       500:
+ *         description: Internal server error
+ */
+router.put(
+  "/settings",
+  authMiddleware,
+  authorizeRoles("tenant"),
+  tenantController.updateTenantSettings
+);
+
+/**
+ * @swagger
  * /tenants/deactivate/{tenantId}:
  *   patch:
  *     summary: Set tenant status to inactive

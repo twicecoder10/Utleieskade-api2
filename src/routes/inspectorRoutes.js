@@ -681,4 +681,27 @@ router.put(
   inspectorController.updateInspectorSettings
 );
 
+/**
+ * @swagger
+ * /inspectors/delete/my-account:
+ *   delete:
+ *     summary: Delete inspector account
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     responses:
+ *       200:
+ *         description: Inspector deleted successfully
+ *       404:
+ *         description: Inspector not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete(
+  "/delete/my-account",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.deleteInspector
+);
+
 module.exports = router;

@@ -10,7 +10,7 @@ const CaseTimeline = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
     },
     caseId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       allowNull: false,
     },
     eventType: {

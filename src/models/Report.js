@@ -10,7 +10,7 @@ const Report = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
     },
     inspectorId: { type: DataTypes.UUID, allowNull: false },
-    caseId: { type: DataTypes.UUID, allowNull: false },
+    caseId: { type: DataTypes.STRING, allowNull: false },
     reportDescription: { type: DataTypes.STRING, allowNull: false },
   },
   { tableName: "Report", timestamps: true }

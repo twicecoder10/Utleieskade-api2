@@ -11,7 +11,7 @@ const Damage = sequelize.define(
     },
     damageDescription: { type: DataTypes.STRING, allowNull: false },
     damageLocation: { type: DataTypes.STRING, allowNull: false },
-    caseId: { type: DataTypes.UUID, allowNull: false },
+    caseId: { type: DataTypes.STRING, allowNull: false },
     damageType: {
       type: DataTypes.STRING,
       allowNull: false,

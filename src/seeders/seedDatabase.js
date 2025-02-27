@@ -1,4 +1,8 @@
-const { sequelize } = require("../models");
+const {
+  sequelize,
+  NotificationSettings,
+  PrivacyPolicySettings,
+} = require("../models");
 const bcrypt = require("bcryptjs");
 
 const {
@@ -25,7 +29,7 @@ const seedDatabase = async () => {
 
     await sequelize.sync({ force: true });
 
-    await User.bulkCreate([
+    const users = await User.bulkCreate([
       {
         userId: uuidv4(),
         userFirstName: "John",
@@ -89,6 +93,25 @@ const seedDatabase = async () => {
         inspectorExpertiseCode: 101,
       },
     ]);
+
+    const settingsPromises = users.map((user) => {
+      return Promise.all([
+        NotificationSettings.create({
+          userId: user.userId,
+          deadlineNotifications: true,
+          newCaseAlerts: true,
+          tenantUpdates: true,
+          messageNotifications: true,
+        }),
+        PrivacyPolicySettings.create({
+          userId: user.userId,
+          essentialCookies: true,
+          thirdPartySharing: true,
+        }),
+      ]);
+    });
+
+    await Promise.all(settingsPromises);
 
     await Expertise.bulkCreate([
       {

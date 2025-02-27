@@ -8,7 +8,7 @@ const Payment = sequelize.define(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    caseId: { type: DataTypes.UUID, allowNull: false },
+    caseId: { type: DataTypes.STRING, allowNull: false },
     paymentAmount: { type: DataTypes.STRING, allowNull: false },
     paymentDate: { type: DataTypes.DATE, allowNull: false },
     paymentStatus: {

@@ -206,3 +206,44 @@ exports.getCases = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.getTenantSettings = async (req, res) => {
+  try {
+    const tenantId = req.user.id;
+    const settings = await tenantService.getTenantSettings(tenantId);
+
+    if (!settings) {
+      responseHandler.setError(404, "Tenant not found");
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, settings);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching tenant settings:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
+exports.updateTenantSettings = async (req, res) => {
+  try {
+    const tenantId = req.user.id;
+    const updateResult = await tenantService.updateTenantSettings(
+      tenantId,
+      req.body
+    );
+
+    if (!updateResult.success) {
+      responseHandler.setError(400, updateResult.message);
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, updateResult.message);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error updating tenant settings:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};

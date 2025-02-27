@@ -58,9 +58,7 @@ User.afterCreate(async (user) => {
     tenantUpdates: true,
     messageNotifications: true,
   });
-});
 
-User.afterCreate(async (user) => {
   await PrivacyPolicySettings.create({
     userId: user.userId,
     essentialCookies: true,
