@@ -98,6 +98,22 @@ exports.addSubAdmin = async (req, res) => {
   }
 };
 
+exports.getAdminDashboard = async (req, res) => {
+  try {
+    const dashboardData = await adminService.getAdminDashboardData(req.user.id);
+    responseHandler.setSuccess(
+      200,
+      "Admin dashboard data retrieved successfully",
+      dashboardData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching admin dashboard data:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
 exports.getAllAdmins = async (req, res) => {
   try {
     const admins = await adminService.getAllAdmins(req.query);

@@ -215,6 +215,95 @@ router.post(
 
 /**
  * @swagger
+ * /admins/dashboard:
+ *   get:
+ *     summary: Get admin dashboard statistics
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     description: Retrieve statistics for the admin dashboard including users, revenue, payouts, refunds, and cases.
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalUsers:
+ *                   type: integer
+ *                 totalInspectors:
+ *                   type: integer
+ *                 totalTenants:
+ *                   type: integer
+ *                 totalRevenue:
+ *                   type: number
+ *                 totalPayouts:
+ *                   type: number
+ *                 totalRefunds:
+ *                   type: number
+ *                 totalCases:
+ *                   type: integer
+ *                 totalCompleted:
+ *                   type: integer
+ *                 totalCancelled:
+ *                   type: integer
+ *                 overviewGraphs:
+ *                   type: object
+ *                   properties:
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           month:
+ *                             type: integer
+ *                           totalUsers:
+ *                             type: integer
+ *                           totalInspectors:
+ *                             type: integer
+ *                           totalTenants:
+ *                             type: integer
+ *                     revenue:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           month:
+ *                             type: integer
+ *                           totalRevenue:
+ *                             type: number
+ *                           totalPayouts:
+ *                             type: number
+ *                           totalRefunds:
+ *                             type: number
+ *                     cases:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           month:
+ *                             type: integer
+ *                           totalCases:
+ *                             type: integer
+ *                           totalCompleted:
+ *                             type: integer
+ *                           totalCancelled:
+ *                             type: integer
+ *       401:
+ *         description: Unauthorized, admin access required
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/dashboard",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  adminController.getAdminDashboard
+);
+
+/**
+ * @swagger
  * /admins/update/{adminId}:
  *   patch:
  *     summary: Update details of a specific sub-admin
