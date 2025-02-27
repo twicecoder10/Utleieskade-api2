@@ -8,7 +8,7 @@ const {
   Damage,
   DamagePhoto,
   Payment,
-  Assessment,
+  Report,
   Availability,
   BankDetails,
   Expertise,
@@ -17,6 +17,7 @@ const {
   TrackingTime,
 } = require("../models");
 const { v4: uuidv4 } = require("uuid");
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 
 const seedDatabase = async () => {
   try {
@@ -119,9 +120,11 @@ const seedDatabase = async () => {
       },
     ]);
 
+    const caseId1 = generateUniqueId("CASE");
+
     await Case.bulkCreate([
       {
-        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        caseId: caseId1,
         CaseCompletedDate: null,
         userId: "a4d32525-e0a7-4c95-82e3-990c38c338fd",
         propertyId: "8d55184c-2039-4d58-9f6f-3b2452589aab",
@@ -135,19 +138,19 @@ const seedDatabase = async () => {
     await CaseTimeline.bulkCreate([
       {
         timelineId: uuidv4(),
-        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        caseId: caseId1,
         eventType: "caseCreated",
         eventDescription: "Case created",
       },
       {
         timelineId: uuidv4(),
-        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        caseId: caseId1,
         eventType: "inspectorAssigned",
         eventDescription: "Inspector assigned",
       },
       {
         timelineId: uuidv4(),
-        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        caseId: caseId1,
         eventType: "inspectorAccepted",
         eventDescription: "Inspector accepted",
       },
@@ -162,7 +165,7 @@ const seedDatabase = async () => {
         damageType: "Water Leak",
         damageDescription: "Severe water leakage near the sink.",
         propertyId: "cecba28f-fc8d-45e7-b46b-5400c58b088f",
-        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        caseId: caseId1,
         damageDate: new Date(),
       },
     ]);
@@ -185,7 +188,7 @@ const seedDatabase = async () => {
     await Payment.bulkCreate([
       {
         paymentId: uuidv4(),
-        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
+        caseId: caseId1,
         paymentAmount: "150.00",
         paymentDate: new Date(),
         paymentStatus: "pending",
@@ -193,13 +196,12 @@ const seedDatabase = async () => {
       },
     ]);
 
-    await Assessment.bulkCreate([
+    await Report.bulkCreate([
       {
-        assessmentId: uuidv4(),
-        assessmentDate: new Date(),
+        reportId: uuidv4(),
+        reportDescription: "Multiple damages across the apartment",
         inspectorId: "d232e81f-6622-4a20-817f-1ffbfbba295a",
-        caseId: "e6c5a26d-3b55-4ea3-a342-20417806feb4",
-        assessmentLevel: "medium",
+        caseId: caseId1,
       },
     ]);
 
@@ -218,6 +220,8 @@ const seedDatabase = async () => {
         accountNumber: 12345678,
         sortCode: 123456,
         bankName: "Barclays Bank",
+        userFirstName: "Jude",
+        userLastName: "Scott",
         userId: "d232e81f-6622-4a20-817f-1ffbfbba295a",
       },
     ]);

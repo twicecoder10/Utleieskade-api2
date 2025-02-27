@@ -5,9 +5,8 @@ const Case = sequelize.define(
   "Case",
   {
     caseId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
     },
     caseCompletedDate: { type: DataTypes.DATE, allowNull: true },
     userId: { type: DataTypes.UUID, allowNull: false },

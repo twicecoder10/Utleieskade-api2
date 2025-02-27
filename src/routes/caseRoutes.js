@@ -5,6 +5,9 @@ const {
 } = require("../middlewares/roleMiddleware");
 const caseController = require("../controllers/caseController");
 const { caseValidationRules } = require("../validators/caseValidator");
+const {
+  caseAssessmentValidationRules,
+} = require("../validators/caseAssessmentValidator");
 const { validate } = require("../middlewares/validate");
 
 const router = express.Router();
@@ -222,11 +225,7 @@ router.get(
  *       500:
  *         description: Internal server error
  */
-router.get(
-  "/getCase/:caseId",
-  authMiddleware,
-  caseController.getCaseDetails
-);
+router.get("/getCase/:caseId", authMiddleware, caseController.getCaseDetails);
 
 /**
  * @swagger
@@ -334,6 +333,53 @@ router.get(
   authMiddleware,
   authorizeRoles("admin", "sub-admin"),
   caseController.getCaseTimeline
+);
+
+/**
+ * @swagger
+ * /cases/report-assessment:
+ *   post:
+ *     summary: Upload a case assessment
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Cases]
+ *     description: Allows an inspector to report a case assessment with multiple photos.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               caseId:
+ *                 type: string
+ *                 example: "8d55184c-2039-4d58-9f6f-3b2452589aab"
+ *               reportDescription:
+ *                 type: string
+ *                 example: "Multiple damages across the apartment"
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     photoUrl:
+ *                       type: string
+ *                       example: "https://example.com/photo1.jpg"
+ *     responses:
+ *       201:
+ *         description: Assessment reported successfully
+ *       400:
+ *         description: Invalid input data
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/report-assessment",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  caseAssessmentValidationRules(),
+  validate,
+  caseController.reportAssessment
 );
 
 module.exports = router;

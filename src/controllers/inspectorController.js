@@ -232,3 +232,85 @@ exports.getInspectorCases = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.getInspectorEarnings = async (req, res) => {
+  try {
+    const { id: inspectorId } = req.user;
+
+    const earningsData = await inspectorService.getInspectorEarnings(
+      inspectorId
+    );
+
+    responseHandler.setSuccess(
+      200,
+      "Inspector earnings retrieved",
+      earningsData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching inspector earnings:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.requestPayout = async (req, res) => {
+  try {
+    const { amount, userPassword } = req.body;
+    const { id: inspectorId } = req.user;
+
+    const result = await inspectorService.requestPayout({
+      inspectorId,
+      amount,
+      userPassword,
+    });
+
+    responseHandler.setSuccess(200, result.message);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error requesting payout:", error);
+    responseHandler.setError(400, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.getInspectorSettings = async (req, res) => {
+  try {
+    const inspectorId = req.user.id;
+    const settings = await inspectorService.getInspectorSettings(inspectorId);
+
+    if (!settings) {
+      responseHandler.setError(404, "Inspector not found");
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, settings);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching inspector settings:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
+exports.updateInspectorSettings = async (req, res) => {
+  try {
+    const inspectorId = req.user.id;
+    const updateResult = await inspectorService.updateInspectorSettings(
+      inspectorId,
+      req.body
+    );
+
+    if (!updateResult.success) {
+      responseHandler.setError(400, updateResult.message);
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, updateResult.message);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error updating inspector settings:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};

@@ -5,16 +5,19 @@ const Case = require("./Case");
 const CaseTimeline = require("./CaseTimeline");
 const Damage = require("./Damage");
 const Payment = require("./Payment");
-const Assessment = require("./Assessment");
+const Report = require("./Report");
 const Availability = require("./Availability");
 const BankDetails = require("./BankDetails");
 const Expertise = require("./Expertise");
 const InspectorPayment = require("./InspectorPayment");
+const ReportPhoto = require("./ReportPhoto");
 const Property = require("./Property");
 const Refund = require("./Refund");
 const TrackingTime = require("./TrackingTime");
 const Otp = require("./Otp");
 const DamagePhoto = require("./DamagePhoto");
+const NotificationSettings = require("./NotificationSettings");
+const PrivacyPolicySettings = require("./PrivacyPolicySettings");
 
 const syncDatabase = async (force = false) => {
   try {
@@ -26,7 +29,7 @@ const syncDatabase = async (force = false) => {
 
 User.hasMany(Case, { foreignKey: "userId" });
 User.hasMany(Case, { foreignKey: "inspectorId", as: "inspectedCases" });
-User.hasMany(Assessment, { foreignKey: "userId", as: "inspectorAssessments" });
+User.hasMany(Report, { foreignKey: "userId", as: "inspectorReports" });
 User.hasMany(Availability, {
   foreignKey: "userId",
   as: "inspectorAvailability",
@@ -40,7 +43,21 @@ User.hasMany(TrackingTime, {
   foreignKey: "userId",
   as: "inspectorTrackingTime",
 });
-User.hasOne(BankDetails, { foreignKey: "userId", as: "bankDetails" });
+User.hasOne(BankDetails, {
+  foreignKey: "userId",
+  as: "bankDetails",
+  onDelete: "CASCADE",
+});
+User.hasOne(NotificationSettings, {
+  foreignKey: "userId",
+  as: "notifications",
+  onDelete: "CASCADE",
+});
+User.hasOne(PrivacyPolicySettings, {
+  foreignKey: "userId",
+  as: "privacyPolicy",
+  onDelete: "CASCADE",
+});
 
 Case.belongsTo(User, { foreignKey: "userId", as: "tenant" });
 Case.belongsTo(User, {
@@ -50,25 +67,27 @@ Case.belongsTo(User, {
 });
 Case.belongsTo(Property, { foreignKey: "propertyId", as: "property" });
 Case.hasMany(Damage, { foreignKey: "caseId", as: "damages" });
-Case.hasMany(Assessment, { foreignKey: "caseId" });
+Case.hasMany(Report, { foreignKey: "caseId", as: "reports" });
 Case.hasMany(Payment, { foreignKey: "caseId" });
 Case.hasMany(CaseTimeline, { foreignKey: "caseId", as: "timeline" });
 Case.hasOne(Refund, { foreignKey: "caseId", as: "refund" });
 
 CaseTimeline.belongsTo(Case, { foreignKey: "caseId" });
 
-Assessment.belongsTo(Case, { foreignKey: "caseId" });
-Assessment.belongsTo(User, { foreignKey: "userId", as: "inspector" });
+Report.belongsTo(Case, { foreignKey: "caseId" });
+Report.belongsTo(User, { foreignKey: "inspectorId", as: "inspector" });
 
 Availability.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
-BankDetails.belongsTo(User, {
-  foreignKey: "userId",
-  as: "inspector",
-});
+BankDetails.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
 Damage.belongsTo(Case, { foreignKey: "caseId" });
 Damage.hasMany(DamagePhoto, { foreignKey: "damageId", as: "damagePhotos" });
+
+Report.hasMany(ReportPhoto, {
+  foreignKey: "reportId",
+  as: "reportPhotos",
+});
 
 Expertise.hasMany(User, { foreignKey: "expertiseCode", as: "inspectors" });
 
@@ -90,6 +109,18 @@ Refund.belongsTo(Case, { foreignKey: "caseId", as: "caseDetails" });
 
 TrackingTime.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
+NotificationSettings.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+  onDelete: "CASCADE",
+});
+
+PrivacyPolicySettings.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+  onDelete: "CASCADE",
+});
+
 module.exports = {
   sequelize,
   syncDatabase,
@@ -98,7 +129,7 @@ module.exports = {
   CaseTimeline,
   Damage,
   Payment,
-  Assessment,
+  Report,
   Availability,
   BankDetails,
   Expertise,
@@ -108,4 +139,6 @@ module.exports = {
   TrackingTime,
   Otp,
   DamagePhoto,
+  NotificationSettings,
+  PrivacyPolicySettings,
 };

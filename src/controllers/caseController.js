@@ -137,3 +137,25 @@ exports.getCaseTimeline = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.reportAssessment = async (req, res) => {
+  try {
+    const reportData = req.body;
+    const { id } = req.user;
+
+    const newReport = await caseService.reportAssessment({
+      ...reportData,
+      inspectorId: id,
+    });
+
+    responseHandler.setSuccess(201, "Assessment reported successfully", {
+      reportId: newReport.reportId,
+    });
+
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error creating case:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};

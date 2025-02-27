@@ -1,5 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const NotificationSettings = require("./NotificationSettings");
+const PrivacyPolicySettings = require("./PrivacyPolicySettings");
 
 const User = sequelize.define(
   "User",
@@ -47,5 +49,23 @@ const User = sequelize.define(
   },
   { tableName: "User", timestamps: true }
 );
+
+User.afterCreate(async (user) => {
+  await NotificationSettings.create({
+    userId: user.userId,
+    deadlineNotifications: true,
+    newCaseAlerts: true,
+    tenantUpdates: true,
+    messageNotifications: true,
+  });
+});
+
+User.afterCreate(async (user) => {
+  await PrivacyPolicySettings.create({
+    userId: user.userId,
+    essentialCookies: true,
+    thirdPartySharing: true,
+  });
+});
 
 module.exports = User;

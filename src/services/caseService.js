@@ -1,3 +1,4 @@
+const ReportPhoto = require("../models/ReportPhoto");
 const {
   Case,
   User,
@@ -5,8 +6,10 @@ const {
   Damage,
   DamagePhoto,
   Property,
+  Report,
 } = require("../models/index");
 const { Op } = require("sequelize");
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 
 const createCase = async (caseData) => {
   const {
@@ -19,6 +22,7 @@ const createCase = async (caseData) => {
   } = caseData;
 
   const newCase = await Case.create({
+    caseId: generateUniqueId("CASE"),
     userId,
     propertyId,
     buildingNumber,
@@ -161,6 +165,22 @@ const getCaseDetails = async (caseId) => {
           },
         ],
       },
+      {
+        model: CaseTimeline,
+        as: "timeline",
+      },
+      {
+        model: Report,
+        as: "reports",
+        include: [
+          {
+            model: ReportPhoto,
+            as: "reportPhotos",
+            // attributes: [],
+            required: false,
+          },
+        ],
+      },
     ],
   });
 };
@@ -177,6 +197,7 @@ const cancelCase = async (caseId, cancellationReason) => {
 
   return { message: "Case cancelled successfully" };
 };
+
 const assignCase = async (caseId, inspectorId) => {
   const caseInstance = await Case.findOne({ where: { caseId } });
   if (!caseInstance) return null;
@@ -207,6 +228,25 @@ const logCaseEvent = async (caseId, eventType, eventDescription) => {
   });
 };
 
+const reportAssessment = async (reportData) => {
+  const { inspectorId, caseId, photos, reportDescription } = reportData;
+
+  const newReport = await Report.create({
+    inspectorId,
+    caseId,
+    reportDescription,
+  });
+
+  const reportPhotos = photos.map((photo) => ({
+    reportId: newReport.reportId,
+    photoUrl: photo.photoUrl,
+  }));
+
+  await ReportPhoto.bulkCreate(reportPhotos);
+
+  return newReport;
+};
+
 module.exports = {
   createCase,
   getAllCases,
@@ -215,4 +255,5 @@ module.exports = {
   assignCase,
   logCaseEvent,
   getCaseTimeline,
+  reportAssessment,
 };

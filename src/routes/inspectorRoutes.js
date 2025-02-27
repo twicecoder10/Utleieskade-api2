@@ -459,4 +459,226 @@ router.patch(
   inspectorController.deactivateInspector
 );
 
+/**
+ * @swagger
+ * /inspectors/earnings:
+ *   get:
+ *     summary: Get inspector earnings and payout history
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     responses:
+ *       200:
+ *         description: Inspector earnings and payout history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalBalance:
+ *                   type: number
+ *                   example: 20340.00
+ *                 payoutHistory:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                         example: "21st May 2025"
+ *                       referenceNumber:
+ *                         type: string
+ *                         example: "REF20234-234"
+ *                       cases:
+ *                         type: integer
+ *                         example: 24
+ *                       amount:
+ *                         type: number
+ *                         example: -24000.00
+ *                       status:
+ *                         type: string
+ *                         example: "Pending"
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/earnings",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getInspectorEarnings
+);
+
+/**
+ * @swagger
+ * /inspectors/request-payout:
+ *   post:
+ *     summary: Request a payout for the inspector's pending balance
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 example: 20340.00
+ *               userPassword:
+ *                 type: string
+ *                 example: "securepassword"
+ *     responses:
+ *       200:
+ *         description: Payout request successful
+ *       400:
+ *         description: Invalid request (wrong amount or incorrect password)
+ *       401:
+ *         description: Unauthorized - Inspector not authenticated
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/request-payout",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.requestPayout
+);
+
+/**
+ * @swagger
+ * /inspectors/settings:
+ *   get:
+ *     summary: Get inspector settings
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     description: Retrieve the current settings of an inspector.
+ *     responses:
+ *       200:
+ *         description: Inspector settings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account:
+ *                   type: object
+ *                   properties:
+ *                     userFirstName:
+ *                       type: string
+ *                     userLastName:
+ *                       type: string
+ *                     userEmail:
+ *                       type: string
+ *                     userPhone:
+ *                       type: string
+ *                     expertise:
+ *                       type: string
+ *                     language:
+ *                       type: string
+ *                     userAddress:
+ *                       type: string
+ *                     userPostcode:
+ *                       type: string
+ *                     userCountry:
+ *                       type: string
+ *                 notifications:
+ *                   type: object
+ *                   properties:
+ *                     deadlineNotifications:
+ *                       type: boolean
+ *                     newCaseAlerts:
+ *                       type: boolean
+ *                     tenantsUpdates:
+ *                       type: boolean
+ *                     messageNotifications:
+ *                       type: boolean
+ *                 payment:
+ *                   type: object
+ *                   properties:
+ *                     bankName:
+ *                       type: string
+ *                     accountNumber:
+ *                       type: string
+ *                     userFirstName:
+ *                       type: string
+ *                     userLastName:
+ *                       type: string
+ *                 privacySecurity:
+ *                   type: object
+ *                   properties:
+ *                     mfaEnabled:
+ *                       type: boolean
+ *                     pauseMode:
+ *                       type: boolean
+ *       401:
+ *         description: Unauthorized - Missing or invalid token
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/settings",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getInspectorSettings
+);
+
+/**
+ * @swagger
+ * /inspectors/settings:
+ *   put:
+ *     summary: Update inspector settings
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     description: Allows an inspector to update their settings.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notifications:
+ *                 type: object
+ *                 properties:
+ *                   deadlineNotifications:
+ *                     type: boolean
+ *                   newCaseAlerts:
+ *                     type: boolean
+ *                   tenantsUpdates:
+ *                     type: boolean
+ *                   messageNotifications:
+ *                     type: boolean
+ *               payment:
+ *                 type: object
+ *                 properties:
+ *                   bankName:
+ *                     type: string
+ *                   accountNumber:
+ *                     type: string
+ *               privacySecurity:
+ *                 type: object
+ *                 properties:
+ *                   mfaEnabled:
+ *                     type: boolean
+ *                   pauseMode:
+ *                     type: boolean
+ *     responses:
+ *       200:
+ *         description: Inspector settings updated successfully
+ *       400:
+ *         description: Invalid input data
+ *       500:
+ *         description: Internal server error
+ */
+router.put(
+  "/settings",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.updateInspectorSettings
+);
+
 module.exports = router;
