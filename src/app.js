@@ -4,6 +4,8 @@ const errorMiddleware = require("./middlewares/errorMiddleware");
 const morgan = require("morgan");
 const setupSwagger = require("./config/swagger");
 const path = require("path");
+const socketIO = require("socket.io");
+const handleSocketEvents = require("./socket/socketControllers");
 
 const app = express();
 
@@ -24,6 +26,8 @@ const paymentsRoutes = require("./routes/paymentsRoutes");
 const refundRoutes = require("./routes/refundRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const fileRoutes = require("./routes/fileRoutes");
+const chatRoutes = require("./routes/chatRoutes");
+const { socketAuth } = require("./middlewares/socketAuth");
 
 app.use("/admins", adminRoutes);
 app.use("/users", userRoutes);
@@ -34,6 +38,7 @@ app.use("/payments", paymentsRoutes);
 app.use("/refunds", refundRoutes);
 app.use("/otp", otpRoutes);
 app.use("/files", fileRoutes);
+app.use("/chats", chatRoutes);
 
 app.use(errorMiddleware);
 
@@ -53,4 +58,19 @@ app.get("/", (req, res) => {
   });
 });
 
-module.exports = { app };
+const socketIOSetup = (server) => {
+  const io = socketIO(server, { cors: { origin: "*" } });
+
+  io.use(socketAuth);
+  handleSocketEvents(io);
+
+  if (server && server.address() && server.address().port) {
+    const serverPort = server.address().port;
+    console.log(`SocketIO server is running on http://localhost:${serverPort}`);
+    return io;
+  } else {
+    console.log("Server or port is not defined for SocketIO");
+  }
+};
+
+module.exports = { app, socketIOSetup };

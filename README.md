@@ -77,7 +77,16 @@ A Node.js backend built with **Express.js**, **MySQL**, and **Sequelize** for ma
 
 ## API Documentation
 
-The API is documented using **Swagger**.
+The API is documented using **Swagger**. See the table below for web socket docs.
+
+| **Event Name**   | **Description**                                 | **Example Request Payload**                                                                    |
+| ---------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `sendMessage`    | Sends a real-time message to another user.      | `{ "receiverId": "user-123", "messageText": "Hello!" }`                                        |
+| `receiveMessage` | Listens for new incoming messages.              | `{ "senderId": "user-456", "messageText": "Hey there!", "timestamp": "2025-02-27T12:00:00Z" }` |
+| `markAsRead`     | Marks messages in a conversation as read.       | `{ "conversationId": "conv-789", "userId": "user-123" }`                                       |
+| `disconnect`     | Disconnects the user from the WebSocket server. | `{}`                                                                                           |
+
+disconnect Disconnects the user from the WebSocket server. {}
 
 ### 📌 Access Swagger UI:
 

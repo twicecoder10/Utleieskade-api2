@@ -18,6 +18,8 @@ const Otp = require("./Otp");
 const DamagePhoto = require("./DamagePhoto");
 const NotificationSettings = require("./NotificationSettings");
 const PrivacyPolicySettings = require("./PrivacyPolicySettings");
+const Conversation = require("./Conversation");
+const Message = require("./Message");
 
 const syncDatabase = async (force = false) => {
   try {
@@ -64,6 +66,16 @@ User.hasOne(PrivacyPolicySettings, {
   onDelete: "CASCADE",
 });
 
+Conversation.belongsTo(User, { foreignKey: "userOne", as: "UserOneDetails" });
+Conversation.belongsTo(User, { foreignKey: "userTwo", as: "UserTwoDetails" });
+
+Message.belongsTo(Conversation, {
+  foreignKey: "conversationId",
+  as: "conversation",
+});
+Message.belongsTo(User, { foreignKey: "senderId", as: "sender" });
+Message.belongsTo(User, { foreignKey: "receiverId", as: "receiver" });
+
 Case.belongsTo(User, { foreignKey: "userId", as: "tenant" });
 Case.belongsTo(User, {
   foreignKey: "inspectorId",
@@ -71,11 +83,27 @@ Case.belongsTo(User, {
   allowNull: true,
 });
 Case.belongsTo(Property, { foreignKey: "propertyId", as: "property" });
-Case.hasMany(Damage, { foreignKey: "caseId", as: "damages", onDelete: "CASCADE" });
-Case.hasMany(Report, { foreignKey: "caseId", as: "reports", onDelete: "CASCADE" });
+Case.hasMany(Damage, {
+  foreignKey: "caseId",
+  as: "damages",
+  onDelete: "CASCADE",
+});
+Case.hasMany(Report, {
+  foreignKey: "caseId",
+  as: "reports",
+  onDelete: "CASCADE",
+});
 Case.hasMany(Payment, { foreignKey: "caseId", onDelete: "CASCADE" });
-Case.hasMany(CaseTimeline, { foreignKey: "caseId", as: "timeline", onDelete: "CASCADE" });
-Case.hasOne(Refund, { foreignKey: "caseId", as: "refund", onDelete: "CASCADE" });
+Case.hasMany(CaseTimeline, {
+  foreignKey: "caseId",
+  as: "timeline",
+  onDelete: "CASCADE",
+});
+Case.hasOne(Refund, {
+  foreignKey: "caseId",
+  as: "refund",
+  onDelete: "CASCADE",
+});
 
 CaseTimeline.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 
@@ -110,7 +138,11 @@ Payment.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 
 Property.hasMany(Case, { foreignKey: "propertyId", as: "cases" });
 
-Refund.belongsTo(Case, { foreignKey: "caseId", as: "caseDetails", onDelete: "CASCADE" });
+Refund.belongsTo(Case, {
+  foreignKey: "caseId",
+  as: "caseDetails",
+  onDelete: "CASCADE",
+});
 
 TrackingTime.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
@@ -146,4 +178,6 @@ module.exports = {
   DamagePhoto,
   NotificationSettings,
   PrivacyPolicySettings,
+  Message,
+  Conversation,
 };
