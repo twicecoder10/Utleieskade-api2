@@ -1,9 +1,5 @@
 const { sendMessage, markMessagesAsRead } = require("../services/chatService");
 
-const handleDisconnect = (socket) => {
-  console.log(`User with socket ID ${socket.id} disconnected`);
-};
-
 const handleClientConnection = (socket, io) => {
   const userId = socket.user.id;
   console.log(`User ${userId} connected`);
@@ -12,7 +8,6 @@ const handleClientConnection = (socket, io) => {
 
   socket.on("disconnect", () => {
     console.log(`User ${userId} disconnected`);
-    handleDisconnect(socket);
   });
 
   handleSendMessage(socket, io);

@@ -1,6 +1,7 @@
 const responseHandler = require("../utils/responseHandler");
 const OtpService = require("../services/otpService");
 const userService = require("../services/userService");
+const { generateToken } = require("../utils/generateToken");
 
 exports.requestOtp = async (req, res) => {
   try {
@@ -55,16 +56,22 @@ exports.verifyOtp = async (req, res) => {
       return responseHandler.send(res);
     }
 
-    const isValidOtp = await OtpService.validateOtp(user.userId, otpCode);
+    const response = await OtpService.validateOtp(user.userId, otpCode);
 
-    if (!isValidOtp) {
-      responseHandler.setError(400, "Invalid or expired OTP.");
+    if (response.statusCode === 200) {
+      const token = generateToken(user.userId, "30m");
+
+      await userService.updateUser(user.userId, {
+        isVerified: true,
+        userPassword: "default",
+        token,
+      });
+
+      responseHandler.setSuccess(response.statusCode, response.message, token);
       return responseHandler.send(res);
     }
 
-    await userService.updateUser(user.userId, { isVerified: true });
-
-    responseHandler.setSuccess(200, "OTP verified successfully.");
+    responseHandler.setSuccess(response.statusCode, response.message);
     return responseHandler.send(res);
   } catch (error) {
     responseHandler.setError(500, error.message);

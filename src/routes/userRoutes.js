@@ -75,10 +75,17 @@ router.post(
 
 /**
  * @swagger
- * /users/login:
+ * /users/login/{userType}:
  *   post:
- *     summary: User login
+ *     summary: User login with userType parameter
  *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: userType
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The type of user (admin, inspector, tenant, landlord)
  *     requestBody:
  *       required: true
  *       content:
@@ -105,10 +112,12 @@ router.post(
  *                   example: "eyJhbGciOiJIUzI1..."
  *       401:
  *         description: Unauthorized - Invalid credentials
+ *       403:
+ *         description: Forbidden - User not valid for auth on this route
  *       500:
  *         description: Server error
  */
-router.post("/login", userController.loginUser);
+router.post("/login/:userType", userController.loginUser);
 
 /**
  * @swagger
@@ -206,61 +215,61 @@ router.get("/fetchProfile", authMiddleware, userController.fetchUserProfile);
  */
 router.put("/update", authMiddleware, userController.updateUser);
 
-/**
- * @swagger
- * /users/send-password-reset-email:
- *   post:
- *     summary: Send a password reset email
- *     tags: [Users]
- *     description: Sends a password reset link to the user's email address.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userEmail:
- *                 type: string
- *                 example: "mail@mail.com"
- *     responses:
- *       200:
- *         description: Password reset email sent successfully.
- *       400:
- *         description: Email is required or user does not exist.
- *       500:
- *         description: Internal server error.
- */
-router.post(
-  "/send-password-reset-email",
-  userController.sendPasswordResetEmail
-);
+// /**
+//  * @swagger
+//  * /users/send-password-reset-email:
+//  *   post:
+//  *     summary: Send a password reset email
+//  *     tags: [Users]
+//  *     description: Sends a password reset link to the user's email address.
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             properties:
+//  *               userEmail:
+//  *                 type: string
+//  *                 example: "mail@mail.com"
+//  *     responses:
+//  *       200:
+//  *         description: Password reset email sent successfully.
+//  *       400:
+//  *         description: Email is required or user does not exist.
+//  *       500:
+//  *         description: Internal server error.
+//  */
+// router.post(
+//   "/send-password-reset-email",
+//   userController.sendPasswordResetEmail
+// );
 
-/**
- * @swagger
- * /users/verify-password-reset-link:
- *   get:
- *     summary: Verify password reset link
- *     tags: [Users]
- *     description: Checks if the password reset link (token) is valid and redirects user accordingly.
- *     parameters:
- *       - in: query
- *         name: token
- *         required: true
- *         schema:
- *           type: string
- *         description: The token received in the password reset email.
- *     responses:
- *       302:
- *         description: Redirects to the password reset page.
- *       400:
- *         description: No token provided.
- *       401:
- *         description: Invalid or expired token.
- *       500:
- *         description: Internal server error.
- */
-router.get("/verify-password-reset-link", userController.verifyPasswordReset);
+// /**
+//  * @swagger
+//  * /users/verify-password-reset-link:
+//  *   get:
+//  *     summary: Verify password reset link
+//  *     tags: [Users]
+//  *     description: Checks if the password reset link (token) is valid and redirects user accordingly.
+//  *     parameters:
+//  *       - in: query
+//  *         name: token
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: The token received in the password reset email.
+//  *     responses:
+//  *       302:
+//  *         description: Redirects to the password reset page.
+//  *       400:
+//  *         description: No token provided.
+//  *       401:
+//  *         description: Invalid or expired token.
+//  *       500:
+//  *         description: Internal server error.
+//  */
+// router.get("/verify-password-reset-link", userController.verifyPasswordReset);
 
 /**
  * @swagger

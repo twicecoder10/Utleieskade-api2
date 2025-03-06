@@ -1,11 +1,12 @@
 const { v4: uuidv4 } = require("uuid");
 const { Op } = require("sequelize");
 const { Otp } = require("../models/index");
-// const sendEmail = require("../utils/sendEmail");
+const sendEmail = require("../utils/sendEmail");
 const emailTemplate = require("../utils/emailTemplate");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const userService = require("../services/userService");
+const { message } = require("../utils/responseHandler");
 
 class OtpService {
   /**
@@ -23,7 +24,11 @@ class OtpService {
       });
 
       if (existingOtp) {
-        return "An OTP has already been sent. Please wait for it to expire.";
+        return {
+          statusCode: 200,
+          message:
+            "An OTP has already been sent. Please wait for it to expire.",
+        };
       }
 
       await userService.updateUser(userId, { isVerified: false });
@@ -54,7 +59,11 @@ class OtpService {
         const lastRequestTime = new Date(otpRecord.updatedAt);
 
         if (currentTime - lastRequestTime < 60 * 1000) {
-          return "Please wait at least 1 minute before requesting a new OTP.";
+          return {
+            statusCode: 400,
+            message:
+              "Please wait at least 1 minute before requesting a new OTP.",
+          };
         }
 
         return await this.updateAndSendOtp(otpRecord.otpId, userEmail);
@@ -84,17 +93,17 @@ class OtpService {
       });
 
       if (!otpRecord) {
-        return "OTP expired or does not exist.";
+        return { statusCode: 400, message: "OTP expired or does not exist." };
       }
 
       const isMatch = await bcrypt.compare(otpCode, otpRecord.otpCode);
       if (!isMatch) {
-        return { success: false, message: "Invalid OTP." };
+        return { success: false, statusCode: 400, message: "Invalid OTP." };
       }
 
       await Otp.destroy({ where: { otpId: otpRecord.otpId } });
 
-      return "OTP verified successfully.";
+      return { statusCode: 200, message: "OTP verified successfully." };
     } catch (error) {
       console.error("Error validating OTP:", error);
       throw new Error("Error validating OTP: " + error.message);
@@ -108,8 +117,7 @@ class OtpService {
    */
   static async createAndSendOtp(userId, userEmail) {
     try {
-      // const otpCode = crypto.randomInt(100000, 999999).toString();
-      const otpCode = "111111"
+      const otpCode = crypto.randomInt(100000, 999999).toString();
       const hashedOtp = await bcrypt.hash(otpCode, 10);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -136,8 +144,7 @@ class OtpService {
    */
   static async updateAndSendOtp(otpId, userEmail) {
     try {
-      // const otpCode = crypto.randomInt(100000, 999999).toString();
-      const otpCode = "111111"
+      const otpCode = crypto.randomInt(100000, 999999).toString();
       const hashedOtp = await bcrypt.hash(otpCode, 10);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -163,8 +170,7 @@ class OtpService {
         "Your OTP Verification Code",
         `Your OTP code is: ${otpCode}. It will expire in 10 minutes.`
       );
-      // return await sendEmail(userEmail, "Your OTP Verification Code", text);
-      return;
+      return await sendEmail(userEmail, "Your OTP Verification Code", text);
     } catch (error) {
       console.error("Error sending OTP email:", error);
       throw new Error("Error sending OTP email: " + error.message);
