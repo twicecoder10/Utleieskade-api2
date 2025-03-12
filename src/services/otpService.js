@@ -6,7 +6,6 @@ const emailTemplate = require("../utils/emailTemplate");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const userService = require("../services/userService");
-const { message } = require("../utils/responseHandler");
 
 class OtpService {
   /**

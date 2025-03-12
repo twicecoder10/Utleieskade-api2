@@ -3,9 +3,14 @@ const responseHandler = require("../utils/responseHandler");
 const { Parser } = require("json2csv");
 const PDFDocument = require("pdfkit");
 const { v4: uuidv4 } = require("uuid");
+const bcrypt = require("bcryptjs");
+const passwordGenerator = require("../utils/passwordGenerator");
+const sendEmail = require("../utils/sendEmail");
+const emailTemplate = require("../utils/emailTemplate");
 
 exports.addInspector = async (req, res) => {
   try {
+    const password = passwordGenerator.generatePassword();
     const {
       userFirstName,
       userLastName,
@@ -31,11 +36,23 @@ exports.addInspector = async (req, res) => {
       userAddress: userAddress.trim(),
       userCountry: userCountry.trim(),
       userType: "inspector",
-      userPassword: "default",
+      userPassword: await bcrypt.hash(password, 10),
       inspectorExpertiseCode: inspectorExpertiseCode,
     };
 
     const newInspector = await inspectorService.createInspector(inspectorData);
+
+    const text = emailTemplate(
+      "Welcome To Utleieskade",
+      `Hello ${newInspector.userFirstName} and welcome to Utleieskade as an inspector
+      <p>
+      Here are your signin details:
+      <br> Email: ${newInspector.userEmail}
+      <br> Password: ${password}
+      <p>
+      Kindly signin with these details at: <a href=https://utleieskade-inspector.vercel.app/>Inspector Signin</a>`
+    );
+    await sendEmail(userEmail, "Inspector Invitation To Utleieskade", text);
 
     responseHandler.setSuccess(
       201,
