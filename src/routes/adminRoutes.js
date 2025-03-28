@@ -382,4 +382,35 @@ router.delete(
   adminController.deleteAdmin
 );
 
+/**
+ * @swagger
+ * /admins/export-dashboard:
+ *   get:
+ *     summary: Export the admin dashboard data as CSV or PDF
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [csv, pdf]
+ *         required: true
+ *         description: Select export format (csv or pdf).
+ *     responses:
+ *       200:
+ *         description: Exported file generated successfully.
+ *       400:
+ *         description: Invalid format provided.
+ *       500:
+ *         description: Internal server error.
+ */
+router.get(
+  "/export-dashboard",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  adminController.exportDashboardReport
+);
+
 module.exports = router;

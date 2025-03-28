@@ -12,11 +12,11 @@ const Message = sequelize.define("Message", {
     allowNull: false,
   },
   senderId: {
-    type: DataTypes.UUID,
+    type: DataTypes.STRING,
     allowNull: false,
   },
   receiverId: {
-    type: DataTypes.UUID,
+    type: DataTypes.STRING,
     allowNull: false,
   },
   messageText: {

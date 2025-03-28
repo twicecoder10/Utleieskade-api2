@@ -219,7 +219,7 @@ const getTenantDashboard = async (tenantId) => {
   const resolvedCasesCount = await Case.count({
     where: {
       userId: tenantId,
-      caseStatus: "closed",
+      caseStatus: "completed",
       // caseCompletedDate: {
       //   [Op.gte]: Sequelize.literal("DATE_SUB(NOW(), INTERVAL 30 DAY)"),
       // },

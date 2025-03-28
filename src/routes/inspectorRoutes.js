@@ -62,9 +62,12 @@ const router = express.Router();
  *               userGender:
  *                 type: string
  *                 example: "Male"
- *               inspectorExpertiseCode:
- *                 type: integer
- *                 example: 101
+ *               inspectorExpertiseCodes:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: "List of inspector expertise codes"
+ *                 example: [101, 102, 103]
  *     responses:
  *       201:
  *         description: Inspector added successfully
@@ -659,6 +662,12 @@ router.get(
  *                     type: string
  *                   accountNumber:
  *                     type: string
+ *               expertises:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: "List of inspector expertise codes"
+ *                 example: [101, 102, 103]
  *               privacySecurity:
  *                 type: object
  *                 properties:

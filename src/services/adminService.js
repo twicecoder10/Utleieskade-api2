@@ -6,6 +6,8 @@ const {
   Case,
 } = require("../models/index");
 const { Op, Sequelize } = require("sequelize");
+const { Parser } = require("json2csv");
+const PDFDocument = require("pdfkit");
 
 const getAdminDashboardData = async () => {
   const totalUsers = await User.count();
@@ -28,7 +30,7 @@ const getAdminDashboardData = async () => {
   });
 
   const totalCases = await Case.count();
-  const totalCompleted = await Case.count({ where: { caseStatus: "closed" } });
+  const totalCompleted = await Case.count({ where: { caseStatus: "completed" } });
   const totalCancelled = await Case.count({
     where: { caseStatus: "cancelled" },
   });
@@ -90,7 +92,7 @@ const getAdminDashboardData = async () => {
       [
         Sequelize.fn(
           "SUM",
-          Sequelize.literal(`CASE WHEN caseStatus='closed' THEN 1 ELSE 0 END`)
+          Sequelize.literal(`CASE WHEN caseStatus='completed' THEN 1 ELSE 0 END`)
         ),
         "totalCompleted",
       ],
@@ -134,9 +136,12 @@ const getAllAdmins = async ({
   limit = 10,
   sortBy = "createdAt",
   sortOrder = "desc",
+  reqUserId,
 }) => {
   const offset = (page - 1) * limit;
-  const whereClause = { userType: "sub-admin" };
+  const whereClause = {
+    userType: { [Op.in]: ["admin", "sub-admin"] },
+  };
 
   if (search) {
     whereClause[Op.or] = [
@@ -148,6 +153,9 @@ const getAllAdmins = async ({
 
   if (status) {
     whereClause.userStatus = status;
+  }
+  if (reqUserId) {
+    whereClause.userId = { [Op.not]: reqUserId };
   }
 
   const { rows: admins, count: totalAdmins } = await User.findAndCountAll({
@@ -215,10 +223,70 @@ const deleteAdmin = async (adminId) => {
   return admin;
 };
 
+const generateDashboardCSV = (dashboardData) => {
+  const keyMap = {
+    totalUsers: "Total Users",
+    totalInspectors: "Total Inspectors",
+    totalTenants: "Total Tenants",
+    totalLandlords: "Total Landlords",
+    totalRevenue: "Total Revenue",
+    totalPayouts: "Total Payouts",
+    totalRefunds: "Total Refunds",
+    totalCases: "Total Cases",
+    totalCompleted: "Total Completed Cases",
+    totalCancelled: "Total Cancelled Cases",
+  };
+
+  const formattedData = [
+    Object.fromEntries(
+      Object.entries(dashboardData).map(([key, value]) => [
+        keyMap[key] || key,
+        value || "N/A",
+      ])
+    ),
+  ];
+
+  const fields = Object.values(keyMap);
+
+  const parser = new Parser({ fields });
+  return parser.parse(formattedData);
+};
+
+const generateDashboardPDF = (dashboardData, res) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument();
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=dashboard_report.pdf`
+      );
+      res.setHeader("Content-Type", "application/pdf");
+
+      doc.pipe(res);
+
+      doc.fontSize(18).text("Admin Dashboard Report", { align: "center" });
+      doc.moveDown();
+
+      Object.keys(dashboardData).forEach((key) => {
+        doc.fontSize(12).text(`${key}: ${dashboardData[key] || "N/A"}`);
+        doc.moveDown(0.5);
+      });
+
+      doc.end();
+      res.on("finish", resolve);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 module.exports = {
   getAdminDashboardData,
   getAllAdmins,
   getAdminById,
   updateAdmin,
   deleteAdmin,
+  generateDashboardCSV,
+  generateDashboardPDF,
 };

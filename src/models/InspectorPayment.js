@@ -1,17 +1,18 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 
 const InspectorPayment = sequelize.define(
   "InspectorPayment",
   {
     paymentId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
+      defaultValue: () => generateUniqueId("PAYE"),
     },
     paymentDate: { type: DataTypes.DATE, allowNull: false },
     paymentAmount: { type: DataTypes.STRING, allowNull: false },
-    inspectorId: { type: DataTypes.UUID, allowNull: false },
+    inspectorId: { type: DataTypes.STRING, allowNull: false },
     paymentStatus: {
       type: DataTypes.ENUM("pending", "processed", "rejected", "requested"),
       defaultValue: "pending",

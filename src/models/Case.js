@@ -9,12 +9,19 @@ const Case = sequelize.define(
       primaryKey: true,
     },
     caseCompletedDate: { type: DataTypes.DATE, allowNull: true },
-    userId: { type: DataTypes.UUID, allowNull: false },
-    inspectorId: { type: DataTypes.UUID, allowNull: true },
+    caseDeadline: { type: DataTypes.DATE, allowNull: true },
+    userId: { type: DataTypes.STRING, allowNull: false },
+    inspectorId: { type: DataTypes.STRING, allowNull: true },
     propertyId: { type: DataTypes.UUID, allowNull: false },
     buildingNumber: { type: DataTypes.STRING, allowNull: true },
     caseStatus: {
-      type: DataTypes.ENUM("open", "closed", "cancelled"),
+      type: DataTypes.ENUM(
+        "open",
+        "completed",
+        "cancelled",
+        "on-hold",
+        "in-progress"
+      ),
       defaultValue: "open",
     },
     caseUrgencyLevel: {

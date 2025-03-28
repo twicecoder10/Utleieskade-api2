@@ -1,3 +1,4 @@
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
@@ -5,9 +6,9 @@ const Refund = sequelize.define(
   "Refund",
   {
     refundId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
+      defaultValue: () => generateUniqueId("REF"),
     },
     caseId: {
       type: DataTypes.STRING,

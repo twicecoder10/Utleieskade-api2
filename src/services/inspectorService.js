@@ -5,12 +5,25 @@ const {
   BankDetails,
   NotificationSettings,
   PrivacyPolicySettings,
+  Expertise,
+  UserExpertise,
 } = require("../models/index");
 const { Op } = require("sequelize");
 const bcrypt = require("bcryptjs");
 
-const createInspector = async (inspectorData) => {
-  return await User.create(inspectorData);
+const createInspector = async (inspectorData, inspectorExpertiseCodes) => {
+  const newInspector = await User.create(inspectorData);
+  if (inspectorExpertiseCodes && inspectorExpertiseCodes.length > 0) {
+    const expertiseEntries = inspectorExpertiseCodes.map((code) => ({
+      userId: newInspector.userId,
+      expertiseCode: code,
+    }));
+
+    await UserExpertise.bulkCreate(expertiseEntries, {
+      ignoreDuplicates: true,
+    });
+  }
+  return newInspector;
 };
 
 const getInspectorDasboard = async (inspectorId) => {
@@ -254,7 +267,6 @@ const getInspectorSettings = async (inspectorId) => {
       "userAddress",
       "userCountry",
       "userProfilePic",
-      "expertiseCode",
       "userStatus",
     ],
     include: [
@@ -284,6 +296,12 @@ const getInspectorSettings = async (inspectorId) => {
         as: "privacyPolicy",
         attributes: ["essentialCookies", "thirdPartySharing"],
       },
+      {
+        model: Expertise,
+        as: "expertises",
+        attributes: ["expertiseCode", "expertiseArea", "expertiseDescription"],
+        through: { attributes: [] },
+      },
     ],
   });
 
@@ -301,6 +319,11 @@ const getInspectorSettings = async (inspectorId) => {
       userPostcode: inspector.userPostcode,
       userCountry: inspector.userCountry,
       userProfilePic: inspector.userProfilePic,
+      expertises: inspector.expertises.map((expertise) => ({
+        expertiseCode: expertise.expertiseCode,
+        expertiseArea: expertise.expertiseArea,
+        expertiseDescription: expertise.expertiseDescription,
+      })),
     },
     notifications: inspector.notifications,
     payment: inspector.bankDetails,
@@ -312,10 +335,11 @@ const getInspectorSettings = async (inspectorId) => {
 };
 
 const updateInspectorSettings = async (inspectorId, data) => {
-  const { notifications, payment, privacySecurity } = data;
+  const { notifications, payment, privacySecurity, expertises } = data;
 
   const inspector = await User.findOne({
     where: { userId: inspectorId },
+    include: [{ model: Expertise, as: "expertises" }],
   });
 
   if (!inspector) {
@@ -346,6 +370,34 @@ const updateInspectorSettings = async (inspectorId, data) => {
     await inspector.save();
   }
 
+  if (expertises) {
+    const existingExpertises = inspector.expertises.map((e) => e.expertiseCode);
+
+    const codesToAdd = expertises.filter(
+      (code) => !existingExpertises.includes(code)
+    );
+    const codesToRemove = existingExpertises.filter(
+      (code) => !expertises.includes(code)
+    );
+
+    if (codesToRemove.length > 0) {
+      await UserExpertise.destroy({
+        where: {
+          userId: inspectorId,
+          expertiseCode: codesToRemove,
+        },
+      });
+    }
+
+    if (codesToAdd.length > 0) {
+      const newExpertiseMappings = codesToAdd.map((code) => ({
+        userId: inspectorId,
+        expertiseCode: code,
+      }));
+      await UserExpertise.bulkCreate(newExpertiseMappings);
+    }
+  }
+
   return { success: true, message: "Inspector settings updated successfully" };
 };
 
@@ -371,5 +423,5 @@ module.exports = {
   requestPayout,
   getInspectorSettings,
   updateInspectorSettings,
-  deleteInspector
+  deleteInspector,
 };

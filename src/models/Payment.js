@@ -1,12 +1,13 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 const Payment = sequelize.define(
   "Payment",
   {
     paymentId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
+      defaultValue: () => generateUniqueId("PAYE"),
     },
     caseId: { type: DataTypes.STRING, allowNull: false },
     paymentAmount: { type: DataTypes.STRING, allowNull: false },

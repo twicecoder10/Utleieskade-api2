@@ -14,7 +14,7 @@ const BankDetails = sequelize.define(
     bankName: { type: DataTypes.STRING, allowNull: false },
     userFirstName: { type: DataTypes.STRING, allowNull: false },
     userLastName: { type: DataTypes.STRING, allowNull: false },
-    userId: { type: DataTypes.UUID, allowNull: false, unique: true },
+    userId: { type: DataTypes.STRING, allowNull: false, unique: true },
   },
   { tableName: "BankDetails", timestamps: true }
 );

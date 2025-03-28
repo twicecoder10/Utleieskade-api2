@@ -8,6 +8,9 @@ const { caseValidationRules } = require("../validators/caseValidator");
 const {
   caseAssessmentValidationRules,
 } = require("../validators/caseAssessmentValidator");
+const {
+  extendCaseDeadlineValidationRules,
+} = require("../validators/extendCaseValidator");
 const { validate } = require("../middlewares/validate");
 
 const router = express.Router();
@@ -271,6 +274,92 @@ router.patch(
 
 /**
  * @swagger
+ * /cases/{caseId}/extend-deadline:
+ *   patch:
+ *     summary: Extend the deadline of a case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Cases]
+ *     description: Allows an inspector or admin to extend the deadline for a case.
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Unique identifier of the case
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newDeadline
+ *             properties:
+ *               newDeadline:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-04-01T14:30:00Z"
+ *     responses:
+ *       200:
+ *         description: Case deadline extended successfully
+ *       400:
+ *         description: Invalid input (e.g. no deadline provided)
+ *       404:
+ *         description: Case not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch(
+  "/:caseId/extend-deadline",
+  authMiddleware,
+  authorizeRoles("inspector", "admin", "sub-admin"),
+  extendCaseDeadlineValidationRules(),
+  validate,
+  caseController.extendCaseDeadline
+);
+
+/**
+ * @swagger
+ * /cases/updateStatus/{caseId}/to/{status}:
+ *   patch:
+ *     summary: Update a case status
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Cases]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique ID of the case
+ *       - in: path
+ *         name: status
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: New status of the case
+ *     responses:
+ *       200:
+ *         description: Case status updated successfully
+ *       404:
+ *         description: Case not found
+ *       400:
+ *         description: Status is required
+ *       500:
+ *         description: Internal server error
+ */
+router.patch(
+  "/updateStatus/:caseId/to/:status",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin", "inspector"),
+  caseController.updateCaseStatus
+);
+
+/**
+ * @swagger
  * /cases/assign/{caseId}/to/{inspectorId}:
  *   patch:
  *     summary: Assign a case to a an inspector
@@ -331,7 +420,7 @@ router.patch(
 router.get(
   "/getTimeline/:caseId",
   authMiddleware,
-  authorizeRoles("admin", "sub-admin"),
+  authorizeRoles("admin", "sub-admin", "inspector"),
   caseController.getCaseTimeline
 );
 
@@ -343,7 +432,7 @@ router.get(
  *     security:
  *       - BearerAuth: []
  *     tags: [Cases]
- *     description: Allows an inspector to report a case assessment with multiple photos.
+ *     description: Allows an inspector to report a case assessment with multiple photos, items, and a summary.
  *     requestBody:
  *       required: true
  *       content:
@@ -365,6 +454,60 @@ router.get(
  *                     photoUrl:
  *                       type: string
  *                       example: "https://example.com/photo1.jpg"
+ *               items:
+ *                 type: array
+ *                 description: List of material and labor assessment items
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     item:
+ *                       type: string
+ *                       example: "Paint walls"
+ *                     quantity:
+ *                       type: integer
+ *                       example: 5
+ *                     unitPrice:
+ *                       type: number
+ *                       example: 100.0
+ *                     hours:
+ *                       type: integer
+ *                       example: 2
+ *                     hourlyRate:
+ *                       type: number
+ *                       example: 50.0
+ *                     sumMaterial:
+ *                       type: number
+ *                       example: 500.0
+ *                     sumWork:
+ *                       type: number
+ *                       example: 100.0
+ *                     sumPost:
+ *                       type: number
+ *                       example: 600.0
+ *               summary:
+ *                 type: object
+ *                 properties:
+ *                   totalHours:
+ *                     type: integer
+ *                     example: 20
+ *                   totalSumMaterials:
+ *                     type: number
+ *                     example: 1000.0
+ *                   totalSumLabor:
+ *                     type: number
+ *                     example: 500.0
+ *                   sumExclVAT:
+ *                     type: number
+ *                     example: 1500.0
+ *                   vat:
+ *                     type: number
+ *                     example: 112.5
+ *                   sumInclVAT:
+ *                     type: number
+ *                     example: 1612.5
+ *                   total:
+ *                     type: number
+ *                     example: 2000.0
  *     responses:
  *       201:
  *         description: Assessment reported successfully

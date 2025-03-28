@@ -20,6 +20,9 @@ const NotificationSettings = require("./NotificationSettings");
 const PrivacyPolicySettings = require("./PrivacyPolicySettings");
 const Conversation = require("./Conversation");
 const Message = require("./Message");
+const UserExpertise = require("./UserExpertise");
+const AssessmentItem = require("./AssessmentItem");
+const AssessmentSummary = require("./AssessmentSummary");
 
 const syncDatabase = async (force = false) => {
   try {
@@ -41,7 +44,6 @@ User.hasMany(Availability, {
   foreignKey: "userId",
   as: "inspectorAvailability",
 });
-User.belongsTo(Expertise, { foreignKey: "expertiseCode", as: "expertise" });
 User.hasMany(InspectorPayment, {
   foreignKey: "userId",
   as: "inspectorPayments",
@@ -64,6 +66,19 @@ User.hasOne(PrivacyPolicySettings, {
   foreignKey: "userId",
   as: "privacyPolicy",
   onDelete: "CASCADE",
+});
+User.belongsToMany(Expertise, {
+  through: UserExpertise,
+  foreignKey: "userId",
+  otherKey: "expertiseCode",
+  as: "expertises",
+});
+
+Expertise.belongsToMany(User, {
+  through: UserExpertise,
+  foreignKey: "expertiseCode",
+  otherKey: "userId",
+  as: "inspectors",
 });
 
 Conversation.belongsTo(User, { foreignKey: "userOne", as: "UserOneDetails" });
@@ -109,6 +124,9 @@ CaseTimeline.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 
 Report.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 Report.belongsTo(User, { foreignKey: "inspectorId", as: "inspector" });
+Report.hasMany(AssessmentItem, { foreignKey: "reportId", as: "assessmentItems" });
+Report.hasOne(AssessmentSummary, { foreignKey: "reportId", as: "assessmentSummary" });
+
 
 Availability.belongsTo(User, { foreignKey: "userId", as: "inspector" });
 
@@ -121,8 +139,6 @@ Report.hasMany(ReportPhoto, {
   foreignKey: "reportId",
   as: "reportPhotos",
 });
-
-Expertise.hasMany(User, { foreignKey: "expertiseCode", as: "inspectors" });
 
 InspectorPayment.belongsTo(User, {
   foreignKey: "inspectorId",
@@ -180,4 +196,7 @@ module.exports = {
   PrivacyPolicySettings,
   Message,
   Conversation,
+  UserExpertise,
+  AssessmentItem,
+  AssessmentSummary,
 };

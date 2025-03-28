@@ -1,3 +1,4 @@
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const NotificationSettings = require("./NotificationSettings");
@@ -7,9 +8,9 @@ const User = sequelize.define(
   "User",
   {
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
+      defaultValue: () => generateUniqueId("USER"),
     },
     userFirstName: { type: DataTypes.STRING, allowNull: false },
     userLastName: { type: DataTypes.STRING, allowNull: false },
@@ -45,7 +46,6 @@ const User = sequelize.define(
     },
     isVerified: { type: DataTypes.BOOLEAN, defaultValue: false },
     token: { type: DataTypes.STRING, allowNull: true },
-    inspectorExpertiseCode: { type: DataTypes.INTEGER, allowNull: true },
   },
   { tableName: "User", timestamps: true }
 );

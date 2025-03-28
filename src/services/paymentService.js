@@ -36,7 +36,7 @@ const getPayments = async ({
               Sequelize.literal(`(
                 SELECT COUNT(*) FROM \`Case\`
                 WHERE \`Case\`.\`inspectorId\` = \`inspector\`.\`userId\`
-                AND \`Case\`.\`caseStatus\` = 'closed'
+                AND \`Case\`.\`caseStatus\` = 'completed'
               )`),
               "completedCases",
             ],

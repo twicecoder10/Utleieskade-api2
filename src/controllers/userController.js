@@ -1,9 +1,9 @@
 const userService = require("../services/userService");
 const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
-const { v4: uuidv4 } = require("uuid");
 const { generateToken } = require("../utils/generateToken");
 const { verifyToken } = require("../utils/verifyToken");
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 
 exports.createUser = async (req, res) => {
   try {
@@ -22,7 +22,7 @@ exports.createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(userPassword.trim(), 10);
 
     const userData = {
-      userId: uuidv4(),
+      userId: generateUniqueId("USER"),
       userFirstName: userFirstName.trim(),
       userLastName: userLastName.trim(),
       userEmail: userEmail.trim().toLowerCase(),

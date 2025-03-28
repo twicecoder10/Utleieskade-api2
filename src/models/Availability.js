@@ -9,7 +9,7 @@ const Availability = sequelize.define(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    inspectorId: { type: DataTypes.UUID, allowNull: false },
+    inspectorId: { type: DataTypes.STRING, allowNull: false },
     availabilityDate: { type: DataTypes.DATE, allowNull: false },
     availabilityTime: { type: DataTypes.TIME, allowNull: false },
   },

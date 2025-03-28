@@ -11,8 +11,12 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["https://utleieskade-admin.vercel.app", "https://utleieskade-inspector.vercel.app", "http:localhost:3000"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    origin: [
+      "https://utleieskade-admin.vercel.app",
+      "https://utleieskade-inspector.vercel.app",
+      "http://localhost:3000",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
@@ -34,6 +38,7 @@ const refundRoutes = require("./routes/refundRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const fileRoutes = require("./routes/fileRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const expertiseRoutes = require("./routes/expertiseRoutes");
 const { socketAuth } = require("./middlewares/socketAuth");
 
 app.use("/admins", adminRoutes);
@@ -46,6 +51,7 @@ app.use("/refunds", refundRoutes);
 app.use("/otp", otpRoutes);
 app.use("/files", fileRoutes);
 app.use("/chats", chatRoutes);
+app.use("/expertises", expertiseRoutes);
 
 app.use(errorMiddleware);
 

@@ -93,6 +93,55 @@ exports.cancelCase = async (req, res) => {
   }
 };
 
+exports.updateCaseStatus = async (req, res) => {
+  try {
+    const { caseId, status } = req.params;
+
+    if (!status) {
+      responseHandler.setError(400, "Status is required.");
+      return responseHandler.send(res);
+    }
+    const normalizedStatus = status.toLowerCase();
+
+    if (normalizedStatus === "cancelled") {
+      responseHandler.setError(
+        400,
+        "Cancellation is not allowed through status update."
+      );
+      return responseHandler.send(res);
+    }
+
+    const ALLOWED_STATUSES = ["open", "completed", "on-hold", "in-progress"];
+
+    if (!ALLOWED_STATUSES.includes(normalizedStatus)) {
+      responseHandler.setError(
+        400,
+        `Status type of ${status} is not recognized`
+      );
+      return responseHandler.send(res);
+    }
+
+    const result = await caseService.updateCaseStatus(caseId, normalizedStatus);
+
+    if (!result) {
+      responseHandler.setError(404, "Case not found.");
+      return responseHandler.send(res);
+    }
+
+    await caseService.logCaseEvent(
+      caseId,
+      "statusChange",
+      `Case status changed to ${normalizedStatus}`
+    );
+
+    responseHandler.setSuccess(200, "Case status updated successfully.");
+    return responseHandler.send(res);
+  } catch (error) {
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
 exports.assignCase = async (req, res) => {
   try {
     const { caseId, inspectorId } = req.params;
@@ -143,6 +192,16 @@ exports.reportAssessment = async (req, res) => {
     const reportData = req.body;
     const { id } = req.user;
 
+    if (reportData.items.length < 1) {
+      responseHandler.setError(400, "At least an assessment item is required");
+      return responseHandler.send(res);
+    }
+
+    if (!reportData.summary) {
+      responseHandler.setError(400, "Summary is required");
+      return responseHandler.send(res);
+    }
+
     const newReport = await caseService.reportAssessment({
       ...reportData,
       inspectorId: id,
@@ -155,6 +214,38 @@ exports.reportAssessment = async (req, res) => {
     return responseHandler.send(res);
   } catch (error) {
     console.error("Error creating case:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
+exports.extendCaseDeadline = async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const { newDeadline } = req.body;
+
+    if (!newDeadline) {
+      responseHandler.setError(400, "New deadline is required.");
+      return responseHandler.send(res);
+    }
+
+    const updated = await caseService.extendCaseDeadline(caseId, newDeadline);
+
+    if (!updated) {
+      responseHandler.setError(404, "Case not found.");
+      return responseHandler.send(res);
+    }
+
+    await caseService.logCaseEvent(
+      caseId,
+      "deadlineExtended",
+      `Deadline extended to ${newDeadline}`
+    );
+
+    responseHandler.setSuccess(200, "Case deadline extended successfully.");
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error extending deadline:", error);
     responseHandler.setError(500, error.message);
     return responseHandler.send(res);
   }

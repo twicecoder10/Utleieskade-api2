@@ -2,8 +2,8 @@ const userService = require("../services/userService");
 const adminService = require("../services/adminService");
 const responseHandler = require("../utils/responseHandler");
 const bcrypt = require("bcryptjs");
-const { v4: uuidv4 } = require("uuid");
 const { generateToken } = require("../utils/generateToken");
+const { generateUniqueId } = require("../utils/uniqueIdGenerator");
 
 exports.createAdmin = async (req, res) => {
   try {
@@ -22,7 +22,7 @@ exports.createAdmin = async (req, res) => {
     const hashedPassword = await bcrypt.hash(userPassword.trim(), 10);
 
     const userData = {
-      userId: uuidv4(),
+      userId: generateUniqueId("ADMIN"),
       userFirstName: userFirstName.trim(),
       userLastName: userLastName.trim(),
       userEmail: userEmail.trim().toLowerCase(),
@@ -65,7 +65,7 @@ exports.addSubAdmin = async (req, res) => {
     const hashedPassword = await bcrypt.hash(userPassword.trim(), 10);
 
     const userData = {
-      userId: uuidv4(),
+      userId: generateUniqueId("ADMIN"),
       userFirstName: userFirstName.trim(),
       userLastName: userLastName.trim(),
       userEmail: userEmail.trim().toLowerCase(),
@@ -116,7 +116,10 @@ exports.getAdminDashboard = async (req, res) => {
 
 exports.getAllAdmins = async (req, res) => {
   try {
-    const admins = await adminService.getAllAdmins(req.query);
+  const admins = await adminService.getAllAdmins({
+    ...req.query,
+    reqUserId: req.user?.id,
+  });
     responseHandler.setSuccess(200, "Admins retrieved successfully", admins);
     return responseHandler.send(res);
   } catch (error) {
@@ -173,6 +176,60 @@ exports.deleteAdmin = async (req, res) => {
     return responseHandler.send(res);
   } catch (error) {
     responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.exportDashboardReport = async (req, res) => {
+  try {
+    const dashboardData = await adminService.getAdminDashboardData();
+    delete dashboardData["overviewGraphs"];
+
+    const keyMap = {
+      totalUsers: "Total Users",
+      totalInspectors: "Total Inspectors",
+      totalTenants: "Total Tenants",
+      totalLandlords: "Total Landlords",
+      totalRevenue: "Total Revenue",
+      totalPayouts: "Total Payouts",
+      totalRefunds: "Total Refunds",
+      totalCases: "Total Cases",
+      totalCompleted: "Total Completed Cases",
+      totalCancelled: "Total Cancelled Cases",
+    };
+
+    let formattedDashboardData = {};
+    Object.keys(dashboardData).forEach((key) => {
+      const newKey = keyMap[key] || key;
+      formattedDashboardData[newKey] = dashboardData[key] || "N/A";
+    });
+
+    const { format } = req.query;
+
+    if (format === "csv") {
+      const csvData = adminService.generateDashboardCSV(formattedDashboardData);
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=dashboard_report.csv"
+      );
+      res.setHeader("Content-Type", "text/csv");
+      return res.status(200).send(csvData);
+    }
+
+    if (format === "pdf") {
+      await adminService.generateDashboardPDF(formattedDashboardData, res);
+
+      return;
+    }
+
+    responseHandler.setError(
+      400,
+      "Invalid format. Use ?format=csv or ?format=pdf"
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error exporting dashboard report:", error);
+    responseHandler.setError(500, "Internal server error");
     return responseHandler.send(res);
   }
 };

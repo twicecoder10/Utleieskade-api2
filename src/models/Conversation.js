@@ -8,11 +8,11 @@ const Conversation = sequelize.define("Conversation", {
     defaultValue: DataTypes.UUIDV4,
   },
   userOne: {
-    type: DataTypes.UUID,
+    type: DataTypes.STRING,
     allowNull: false,
   },
   userTwo: {
-    type: DataTypes.UUID,
+    type: DataTypes.STRING,
     allowNull: false,
   },
   lastMessage: {

@@ -5,7 +5,7 @@ const PrivacyPolicySettings = sequelize.define(
   "PrivacyPolicySettings",
   {
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       primaryKey: true,
       allowNull: false,
     },

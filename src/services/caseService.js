@@ -7,6 +7,8 @@ const {
   DamagePhoto,
   Property,
   Report,
+  AssessmentItem,
+  AssessmentSummary,
 } = require("../models/index");
 const { Op } = require("sequelize");
 const { generateUniqueId } = require("../utils/uniqueIdGenerator");
@@ -19,6 +21,7 @@ const createCase = async (caseData) => {
     damages,
     caseUrgencyLevel,
     caseDescription,
+    caseDeadline,
   } = caseData;
 
   const newCase = await Case.create({
@@ -28,6 +31,7 @@ const createCase = async (caseData) => {
     buildingNumber,
     caseUrgencyLevel,
     caseDescription,
+    caseDeadline,
   });
 
   for (const damage of damages) {
@@ -168,6 +172,8 @@ const getCaseDetails = async (caseId) => {
       {
         model: CaseTimeline,
         as: "timeline",
+        separate: true,
+        order: [["eventTimestamp", "ASC"]],
       },
       {
         model: Report,
@@ -183,6 +189,16 @@ const getCaseDetails = async (caseId) => {
       },
     ],
   });
+};
+
+const updateCaseStatus = async (caseId, status) => {
+  const caseToUpdate = await Case.findOne({ where: { caseId } });
+
+  if (!caseToUpdate) return null;
+
+  await Case.update({ caseStatus: status }, { where: { caseId } });
+
+  return { message: "Case status updated successfully" };
 };
 
 const cancelCase = async (caseId, cancellationReason) => {
@@ -229,7 +245,14 @@ const logCaseEvent = async (caseId, eventType, eventDescription) => {
 };
 
 const reportAssessment = async (reportData) => {
-  const { inspectorId, caseId, photos, reportDescription } = reportData;
+  const {
+    inspectorId,
+    caseId,
+    reportDescription,
+    photos = [],
+    items = [],
+    summary,
+  } = reportData;
 
   const newReport = await Report.create({
     inspectorId,
@@ -237,14 +260,40 @@ const reportAssessment = async (reportData) => {
     reportDescription,
   });
 
-  const reportPhotos = photos.map((photo) => ({
-    reportId: newReport.reportId,
-    photoUrl: photo.photoUrl,
-  }));
+  if (photos.length > 0) {
+    const reportPhotos = photos.map((photo) => ({
+      reportId: newReport.reportId,
+      photoUrl: photo.photoUrl,
+    }));
+    await ReportPhoto.bulkCreate(reportPhotos);
+  }
 
-  await ReportPhoto.bulkCreate(reportPhotos);
+  if (items.length > 0) {
+    const formattedItems = items.map((item) => ({
+      ...item,
+      reportId: newReport.reportId,
+    }));
+    await AssessmentItem.bulkCreate(formattedItems);
+  }
+
+  if (summary) {
+    await AssessmentSummary.create({
+      reportId: newReport.reportId,
+      ...summary,
+    });
+  }
 
   return newReport;
+};
+
+const extendCaseDeadline = async (caseId, newDeadline) => {
+  const caseToUpdate = await Case.findOne({ where: { caseId } });
+  if (!caseToUpdate) return null;
+
+  caseToUpdate.caseDeadline = newDeadline;
+  await caseToUpdate.save();
+
+  return caseToUpdate;
 };
 
 module.exports = {
@@ -256,4 +305,6 @@ module.exports = {
   logCaseEvent,
   getCaseTimeline,
   reportAssessment,
+  updateCaseStatus,
+  extendCaseDeadline,
 };
