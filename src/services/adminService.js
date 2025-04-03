@@ -69,15 +69,6 @@ const getAdminDashboardData = async () => {
         Sequelize.fn(
           "SUM",
           Sequelize.literal(
-            `(SELECT SUM(paymentAmount) FROM InspectorPayment WHERE MONTH(paymentDate) = MONTH(Payment.paymentDate))`
-          )
-        ),
-        "totalPayouts",
-      ],
-      [
-        Sequelize.fn(
-          "SUM",
-          Sequelize.literal(
             `(SELECT SUM(amount) FROM Refund WHERE MONTH(requestDate) = MONTH(Payment.paymentDate))`
           )
         ),
@@ -128,7 +119,10 @@ const getAdminDashboardData = async () => {
     totalCancelled,
     overviewGraphs: {
       users: usersOverview,
-      revenue: revenueOverview,
+      revenue: revenueOverview.map((r) => ({
+      ...r,
+      totalPayouts,
+    })),
       cases: casesOverview,
     },
   };

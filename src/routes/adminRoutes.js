@@ -6,7 +6,7 @@ const {
 } = require("../validators/subAdminValidator.js");
 const {
   updateInspectorByAdminValidation,
-} = require("../validators/inspectorValidation");
+} = require("../validators/inspectorValidator.js");
 const { validate } = require("../middlewares/validate");
 const {
   authMiddleware,
