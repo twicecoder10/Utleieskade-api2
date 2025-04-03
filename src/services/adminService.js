@@ -1,5 +1,6 @@
 const {
   User,
+  UserExpertise,
   Payment,
   InspectorPayment,
   Refund,
@@ -30,7 +31,9 @@ const getAdminDashboardData = async () => {
   });
 
   const totalCases = await Case.count();
-  const totalCompleted = await Case.count({ where: { caseStatus: "completed" } });
+  const totalCompleted = await Case.count({
+    where: { caseStatus: "completed" },
+  });
   const totalCancelled = await Case.count({
     where: { caseStatus: "cancelled" },
   });
@@ -92,7 +95,9 @@ const getAdminDashboardData = async () => {
       [
         Sequelize.fn(
           "SUM",
-          Sequelize.literal(`CASE WHEN caseStatus='completed' THEN 1 ELSE 0 END`)
+          Sequelize.literal(
+            `CASE WHEN caseStatus='completed' THEN 1 ELSE 0 END`
+          )
         ),
         "totalCompleted",
       ],
@@ -281,6 +286,50 @@ const generateDashboardPDF = (dashboardData, res) => {
   });
 };
 
+const updateInspectorDetails = async (inspectorId, data) => {
+  const inspector = await User.findOne({
+    where: { userId: inspectorId, userType: "inspector" },
+  });
+
+  if (!inspector) return { success: false, message: "Inspector not found" };
+
+  const {
+    userFirstName,
+    userLastName,
+    userEmail,
+    userPhone,
+    userCity,
+    userPostcode,
+    userAddress,
+    userCountry,
+    userGender,
+    expertiseCodes,
+  } = data;
+
+  await inspector.update({
+    userFirstName,
+    userLastName,
+    userEmail,
+    userPhone,
+    userCity,
+    userPostcode,
+    userAddress,
+    userCountry,
+    userGender,
+  });
+
+  if (Array.isArray(expertiseCodes)) {
+    await UserExpertise.destroy({ where: { userId: inspectorId } });
+    const expertiseLinks = expertiseCodes.map((code) => ({
+      userId: inspectorId,
+      expertiseCode: code,
+    }));
+    await UserExpertise.bulkCreate(expertiseLinks);
+  }
+
+  return { success: true, data: inspector };
+};
+
 module.exports = {
   getAdminDashboardData,
   getAllAdmins,
@@ -289,4 +338,5 @@ module.exports = {
   deleteAdmin,
   generateDashboardCSV,
   generateDashboardPDF,
+  updateInspectorDetails,
 };

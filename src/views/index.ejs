@@ -47,13 +47,6 @@
       <h1><%= apiTitle %></h1>
       <p><strong>Version:</strong> <%= apiVersion %></p>
 
-      <div class="routes">
-        <h2>Available API Routes</h2>
-        <% apiRoutes.forEach(route => { %>
-        <li><%= route.name %></li>
-        <% }) %>
-      </div>
-
       <div class="api-docs">
         <h2>API Documentation</h2>
         <a href="<%= documentationUrl %>" style="background: green"

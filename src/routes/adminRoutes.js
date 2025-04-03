@@ -4,6 +4,9 @@ const { adminValidationRules } = require("../validators/adminValidator.js");
 const {
   subAdminValidationRules,
 } = require("../validators/subAdminValidator.js");
+const {
+  updateInspectorByAdminValidation,
+} = require("../validators/inspectorValidation");
 const { validate } = require("../middlewares/validate");
 const {
   authMiddleware,
@@ -411,6 +414,80 @@ router.get(
   authMiddleware,
   authorizeRoles("admin", "sub-admin"),
   adminController.exportDashboardReport
+);
+
+/**
+ * @swagger
+ * /admins/update-inspector/{inspectorId}:
+ *   put:
+ *     summary: Update an inspector's details by admin
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: path
+ *         name: inspectorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique ID of the inspector
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userFirstName:
+ *                 type: string
+ *                 example: "Michael"
+ *               userLastName:
+ *                 type: string
+ *                 example: "Jordan"
+ *               userEmail:
+ *                 type: string
+ *                 example: "mj@example.com"
+ *               userPhone:
+ *                 type: string
+ *                 example: "+441234567890"
+ *               userCity:
+ *                 type: string
+ *                 example: "London"
+ *               userPostcode:
+ *                 type: string
+ *                 example: "NW1 6XE"
+ *               userAddress:
+ *                 type: string
+ *                 example: "10 Downing Street"
+ *               userCountry:
+ *                 type: string
+ *                 example: "UK"
+ *               userGender:
+ *                 type: string
+ *                 enum: [male, female, other]
+ *                 example: "male"
+ *               expertiseCodes:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 example: [101, 102]
+ *     responses:
+ *       200:
+ *         description: Inspector updated successfully
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Inspector not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put(
+  "/update-inspector/:inspectorId",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  updateInspectorByAdminValidation(),
+  validate,
+  adminController.updateInspectorByAdmin
 );
 
 module.exports = router;

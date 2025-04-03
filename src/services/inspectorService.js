@@ -56,6 +56,14 @@ const getInspectorById = async (inspectorId) => {
     attributes: {
       exclude: ["userPassword"],
     },
+    include: [
+      {
+        model: Expertise,
+        as: "expertises",
+        attributes: ["expertiseCode", "expertiseArea", "expertiseDescription"],
+        through: { attributes: [] },
+      },
+    ],
   });
 };
 
@@ -75,6 +83,14 @@ const getAllInspectors = async ({ search, page = 1, limit = 10 }) => {
     await User.findAndCountAll({
       where: whereClause,
       attributes: { exclude: ["userPassword"] },
+      include: [
+        {
+          model: Expertise,
+          as: "expertises",
+          attributes: ["expertiseCode", "expertiseArea", "expertiseDescription"],
+          through: { attributes: [] },
+        },
+      ],
       limit: parseInt(limit),
       offset,
       order: [["createdAt", "DESC"]],

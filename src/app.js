@@ -61,12 +61,6 @@ app.get("/", (req, res) => {
   res.render("index", {
     apiTitle: "Utleieskade Rental Damage API",
     apiVersion: "1.0.0",
-    apiRoutes: [
-      { name: "Users", path: "/users" },
-      { name: "Cases", path: "/cases" },
-      { name: "Inspectors", path: "/inspectors" },
-      { name: "Tenants", path: "/tenants" },
-    ],
     documentationUrl: "/api-docs",
   });
 });

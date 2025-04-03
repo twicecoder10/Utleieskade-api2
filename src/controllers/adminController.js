@@ -233,3 +233,24 @@ exports.exportDashboardReport = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.updateInspectorByAdmin = async (req, res) => {
+  try {
+    const inspectorId = req.params.inspectorId;
+    const updateData = req.body;
+
+    const updatedInspector = await adminService.updateInspectorDetails(inspectorId, updateData);
+
+    if (!updatedInspector.success) {
+      responseHandler.setError(404, updatedInspector.message);
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, "Inspector updated successfully", updatedInspector.data);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error updating inspector:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};

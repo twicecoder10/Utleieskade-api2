@@ -55,6 +55,7 @@ const getAllTenants = async ({ search, page = 1, limit = 10 }) => {
       ["userEmail", "email"],
       ["userPhone", "phone"],
       ["userCountry", "country"],
+      ["userStatus", "status"],
       ["createdAt", "dateRegistered"],
       [
         Sequelize.literal(`(
