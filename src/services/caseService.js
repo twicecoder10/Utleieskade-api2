@@ -87,6 +87,7 @@ const getAllCases = async ({
       ["caseId", "caseID"],
       ["caseDescription", "caseDescription"],
       ["caseStatus", "status"],
+      ["caseUrgencyLevel", "urgencyLevel"],
     ],
     include: [
       {
