@@ -111,7 +111,11 @@ exports.updateCaseStatus = async (req, res) => {
       return responseHandler.send(res);
     }
 
+<<<<<<< HEAD
     const ALLOWED_STATUSES = ["open", "completed", "on-hold", "pending"];
+=======
+    const ALLOWED_STATUSES = ["open", "completed", "on-hold", "in-progress"];
+>>>>>>> 6ea9d69bc7970dfce35617e230986892ac113b7f
 
     if (!ALLOWED_STATUSES.includes(normalizedStatus)) {
       responseHandler.setError(

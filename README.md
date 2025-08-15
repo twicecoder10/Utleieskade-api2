@@ -85,8 +85,11 @@ The API is documented using **Swagger**. See the table below for web socket docs
 | `receiveMessage` | Listens for new incoming messages.              | `{ "senderId": "user-456", "messageText": "Hey there!", "timestamp": "2025-02-27T12:00:00Z" }` |
 | `markAsRead`     | Marks messages in a conversation as read.       | `{ "conversationId": "conv-789", "userId": "user-123" }`                                       |
 | `disconnect`     | Disconnects the user from the WebSocket server. | `{}`                                                                                           |
+<<<<<<< HEAD
 
 disconnect Disconnects the user from the WebSocket server. {}
+=======
+>>>>>>> 6ea9d69bc7970dfce35617e230986892ac113b7f
 
 ### 📌 Access Swagger UI:
 
