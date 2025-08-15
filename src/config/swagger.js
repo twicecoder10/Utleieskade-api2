@@ -11,6 +11,10 @@ const options = {
     },
     servers: [
       {
+        url: "https://api.bcplus.scouled.com",
+        description: "Live server",
+      },
+      {
         url: "http://localhost:4000",
         description: "Local development server",
       },

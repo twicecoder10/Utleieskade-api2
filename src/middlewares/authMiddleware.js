@@ -37,4 +37,13 @@ const isAdmin = (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware, isAdmin };
+const isLandlord = (req, res, next) => {
+  if (req.user.userType === "landlord") {
+    next();
+  } else {
+    responseHandler.setError(403, "Access denied. Requires admin role.");
+    return responseHandler.send(res);
+  }
+};
+
+module.exports = { authMiddleware, isAdmin, isLandlord };

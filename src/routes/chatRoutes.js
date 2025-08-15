@@ -1,0 +1,127 @@
+const express = require("express");
+const chatController = require("../controllers/chatController");
+const { authMiddleware } = require("../middlewares/roleMiddleware");
+
+const router = express.Router();
+
+/**
+ * @swagger
+ * tags:
+ *   name: Chat
+ *   description: Chat and messaging functionalities
+ */
+
+/**
+ * @swagger
+ * /chats/fetch-chats:
+ *   get:
+ *     summary: Fetch user conversations
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Chat]
+ *     description: Retrieves a list of conversations the user is part of.
+ *     responses:
+ *       200:
+ *         description: List of conversations retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   conversationId:
+ *                     type: string
+ *                   userId:
+ *                     type: string
+ *                   lastMessage:
+ *                     type: string
+ *                   updatedAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/fetch-chats", authMiddleware, chatController.getUserChats);
+
+/**
+ * @swagger
+ * /chats/get-messages/{conversationId}:
+ *   get:
+ *     summary: Fetch messages from a conversation
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Chat]
+ *     description: Retrieves messages from a specific conversation.
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The conversation ID
+ *     responses:
+ *       200:
+ *         description: Messages retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   messageId:
+ *                     type: string
+ *                   senderId:
+ *                     type: string
+ *                   receiverId:
+ *                     type: string
+ *                   messageText:
+ *                     type: string
+ *                   timestamp:
+ *                     type: string
+ *                     format: date-time
+ *       404:
+ *         description: Conversation not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.get(
+  "/get-messages/:conversationId",
+  authMiddleware,
+  chatController.getMessages
+);
+
+// /**
+//  * @swagger
+//  * /chats/send-message:
+//  *   post:
+//  *     summary: Send a message
+//  *     security:
+//  *       - BearerAuth: []
+//  *     tags: [Chat]
+//  *     description: Send a message to another user.
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             type: object
+//  *             properties:
+//  *               receiverId:
+//  *                 type: string
+//  *                 description: ID of the user receiving the message
+//  *               messageText:
+//  *                 type: string
+//  *                 description: The message text
+//  *     responses:
+//  *       201:
+//  *         description: Message sent successfully.
+//  *       400:
+//  *         description: Bad request, missing fields
+//  *       401:
+//  *         description: Unauthorized
+//  */
+// router.post("/send-message", authMiddleware, chatController.sendMessage);
+
+module.exports = router;

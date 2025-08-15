@@ -11,7 +11,7 @@ const TrackingTime = sequelize.define(
     },
     trackingTimeStart: { type: DataTypes.TIME, allowNull: false },
     trackingTimeEnd: { type: DataTypes.TIME, allowNull: false },
-    inspectorId: { type: DataTypes.UUID, allowNull: false },
+    inspectorId: { type: DataTypes.STRING, allowNull: false },
   },
   {
     tableName: "TrackingTime",

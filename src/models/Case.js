@@ -5,15 +5,23 @@ const Case = sequelize.define(
   "Case",
   {
     caseId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
     },
     caseCompletedDate: { type: DataTypes.DATE, allowNull: true },
-    userId: { type: DataTypes.UUID, allowNull: false },
-    inspectorId: { type: DataTypes.UUID, allowNull: false },
+    caseDeadline: { type: DataTypes.DATE, allowNull: true },
+    userId: { type: DataTypes.STRING, allowNull: false },
+    inspectorId: { type: DataTypes.STRING, allowNull: true },
+    propertyId: { type: DataTypes.UUID, allowNull: false },
+    buildingNumber: { type: DataTypes.STRING, allowNull: true },
     caseStatus: {
-      type: DataTypes.ENUM("open", "closed"),
+      type: DataTypes.ENUM(
+        "open",
+        "completed",
+        "cancelled",
+        "on-hold",
+        "pending"
+      ),
       defaultValue: "open",
     },
     caseUrgencyLevel: {
@@ -21,6 +29,7 @@ const Case = sequelize.define(
       allowNull: false,
     },
     caseDescription: { type: DataTypes.STRING, allowNull: false },
+    cancellationReason: { type: DataTypes.STRING, allowNull: true },
   },
   { tableName: "Case", timestamps: true }
 );
