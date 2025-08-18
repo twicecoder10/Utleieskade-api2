@@ -46,7 +46,7 @@ const inspectorValidationRules = () => {
       .isString()
       .withMessage("Country must be a string"),
 
-    body("inspectorExpertiseCode")
+    body("inspectorExpertiseCodes")
       .optional()
       .isArray()
       .withMessage("Inspector expertise code must be in an array"),
