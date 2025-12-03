@@ -14,6 +14,8 @@ app.use(
     origin: [
       "https://utleieskade-admin.vercel.app",
       "https://utleieskade-inspector.vercel.app",
+      "https://utleieskade-tenant.vercel.app",
+      "https://utleieskade-landing.vercel.app",
       "http://localhost:3000",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
