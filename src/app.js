@@ -41,6 +41,7 @@ const otpRoutes = require("./routes/otpRoutes");
 const fileRoutes = require("./routes/fileRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const expertiseRoutes = require("./routes/expertiseRoutes");
+const settingsRoutes = require("./routes/settingsRoutes");
 const { socketAuth } = require("./middlewares/socketAuth");
 
 app.use("/admins", adminRoutes);
@@ -54,6 +55,7 @@ app.use("/otp", otpRoutes);
 app.use("/files", fileRoutes);
 app.use("/chats", chatRoutes);
 app.use("/expertises", expertiseRoutes);
+app.use("/settings", settingsRoutes);
 
 app.use(errorMiddleware);
 

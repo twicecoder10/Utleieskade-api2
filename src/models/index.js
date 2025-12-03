@@ -18,6 +18,7 @@ const Otp = require("./Otp");
 const DamagePhoto = require("./DamagePhoto");
 const NotificationSettings = require("./NotificationSettings");
 const PrivacyPolicySettings = require("./PrivacyPolicySettings");
+const PlatformSettings = require("./PlatformSettings");
 const Conversation = require("./Conversation");
 const Message = require("./Message");
 const UserExpertise = require("./UserExpertise");
@@ -194,6 +195,7 @@ module.exports = {
   DamagePhoto,
   NotificationSettings,
   PrivacyPolicySettings,
+  PlatformSettings,
   Message,
   Conversation,
   UserExpertise,
