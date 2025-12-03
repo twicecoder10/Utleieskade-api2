@@ -59,16 +59,30 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
       return;
     } catch (error) {
       console.error(`❌ Unable to connect to database (attempt ${i + 1}/${retries}):`, error.message);
+      if (error.code) {
+        console.error(`   Error code: ${error.code}`);
+      }
+      if (error.original) {
+        console.error(`   Original error: ${error.original.message || error.original}`);
+      }
       
       if (i < retries - 1) {
         console.log(`   Retrying in ${delay / 1000} seconds...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       } else {
         console.error("❌ Failed to connect to database after all retries.");
+        console.error("   Connection details:");
+        console.error(`   - Host: ${dbHost || "NOT SET"}`);
+        console.error(`   - Port: ${dbPort || "NOT SET"}`);
+        console.error(`   - Database: ${dbName || "NOT SET"}`);
+        console.error(`   - User: ${dbUser || "NOT SET"}`);
+        console.error(`   - Dialect: ${dbDialect || "postgres"}`);
+        console.error(`   - SSL Required: ${isProduction ? "Yes" : "No"}`);
         console.error("   Please check your database configuration and ensure:");
         console.error("   - Database service is running");
         console.error("   - Environment variables are set correctly");
         console.error("   - Network/firewall allows connections");
+        console.error("   - SSL configuration is correct (if required)");
         throw error;
       }
     }
@@ -94,4 +108,7 @@ const connectionPromise = connectWithRetry().catch((error) => {
   throw error;
 });
 
-module.exports = { sequelize, connectionPromise };
+// Export sequelize for backward compatibility with models
+module.exports = sequelize;
+// Also export connectionPromise for server.js
+module.exports.connectionPromise = connectionPromise;

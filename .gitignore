@@ -1,4 +1,9 @@
 .env
+.env.local
+.env.production
+.env.*
 /node_modules
 .DS_Store
 /uploads
+database-*.json
+database-*.sql

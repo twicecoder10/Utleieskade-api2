@@ -82,6 +82,20 @@ const getDbConfig = () => {
 
 const config = getDbConfig();
 
+// Log configuration (without password) for debugging
+const isProduction = process.env.NODE_ENV === "production";
+if (isProduction) {
+  console.log("📊 Database Configuration:");
+  console.log(`   Host: ${config.dbHost || "NOT SET"}`);
+  console.log(`   Port: ${config.dbPort || "NOT SET"}`);
+  console.log(`   Database: ${config.dbName || "NOT SET"}`);
+  console.log(`   User: ${config.dbUser || "NOT SET"}`);
+  console.log(`   Dialect: ${config.dbDialect || "postgres"}`);
+  console.log(`   Password: ${config.dbPassword ? "***SET***" : "NOT SET"}`);
+  console.log(`   Using DATABASE_URL: ${process.env.DATABASE_URL ? "Yes" : "No"}`);
+  console.log(`   Using Railway PG vars: ${process.env.PGHOST || process.env.PGDATABASE ? "Yes" : "No"}`);
+}
+
 module.exports = {
   dbPort: config.dbPort,
   dbHost: config.dbHost,
