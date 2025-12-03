@@ -1,15 +1,16 @@
 const { Sequelize } = require("sequelize");
-const { dbPort, dbName, dbUser, dbPassword, dbHost } = require("./env");
+const { dbPort, dbName, dbUser, dbPassword, dbHost, dbDialect } = require("./env");
 
 // Determine if we're in production
 const isProduction = process.env.NODE_ENV === "production";
 
 // Database configuration
+const isPostgres = dbDialect === "postgres";
+
 const dbConfig = {
   host: dbHost,
   port: dbPort,
-  dialect: "mysql",
-  dialectModule: require("mysql2"),
+  dialect: dbDialect,
   logging: false,
   // Connection pool settings for production
   pool: {
@@ -20,14 +21,30 @@ const dbConfig = {
   },
   // SSL configuration for production (Railway requires SSL)
   dialectOptions: isProduction
-    ? {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false, // Railway uses self-signed certificates
-        },
-      }
+    ? isPostgres
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false, // Railway uses self-signed certificates
+          },
+        }
+      : {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false, // Railway uses self-signed certificates
+          },
+        }
     : {},
 };
+
+// Set dialect module based on database type
+if (isPostgres) {
+  // PostgreSQL
+  dbConfig.dialectModule = require("pg");
+} else {
+  // MySQL
+  dbConfig.dialectModule = require("mysql2");
+}
 
 const sequelize = new Sequelize(dbName, dbUser, dbPassword, dbConfig);
 
@@ -37,6 +54,7 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
     try {
       await sequelize.authenticate();
       console.log(`✅ Connected to ${dbName} database successfully.`);
+      console.log(`   Type: ${isPostgres ? "PostgreSQL" : "MySQL"}`);
       console.log(`   Host: ${dbHost}:${dbPort}`);
       return;
     } catch (error) {
@@ -57,13 +75,23 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
   }
 };
 
-// Connect to database
-connectWithRetry().catch((error) => {
+// Export a promise that resolves when connected
+const connectionPromise = connectWithRetry().catch((error) => {
   console.error("Fatal database connection error:", error);
+  console.error("Full error details:", {
+    message: error.message,
+    code: error.code,
+    host: dbHost,
+    port: dbPort,
+    database: dbName,
+    user: dbUser,
+    dialect: dbDialect,
+  });
   // Don't exit process in production, let the app handle it
   if (!isProduction) {
     process.exit(1);
   }
+  throw error;
 });
 
-module.exports = sequelize;
+module.exports = { sequelize, connectionPromise };
