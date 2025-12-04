@@ -35,17 +35,17 @@ const getPayments = async ({
             ["userEmail", "email"],
             [
               Sequelize.literal(`(
-                SELECT COUNT(*) FROM \`Case\`
-                WHERE \`Case\`.\`inspectorId\` = \`inspector\`.\`userId\`
-                AND \`Case\`.\`caseStatus\` = 'completed'
+                SELECT COUNT(*) FROM "Case"
+                WHERE "Case"."inspectorId" = "User"."userId"
+                AND "Case"."caseStatus" = 'completed'
               )`),
               "completedCases",
             ],
             [
               Sequelize.literal(`(
-                SELECT SUM(paymentAmount) FROM \`InspectorPayment\`
-                WHERE \`InspectorPayment\`.\`inspectorId\` = \`inspector\`.\`userId\`
-                AND \`InspectorPayment\`.\`paymentStatus\` = 'processed'
+                SELECT SUM("paymentAmount") FROM "InspectorPayment"
+                WHERE "InspectorPayment"."inspectorId" = "User"."userId"
+                AND "InspectorPayment"."paymentStatus" = 'processed'
               )`),
               "totalPaidAmount",
             ],

@@ -5,6 +5,7 @@ const {
   InspectorPayment,
   Refund,
   Case,
+  sequelize,
 } = require("../models/index");
 const { Op, Sequelize } = require("sequelize");
 const { Parser } = require("json2csv");
@@ -38,56 +39,69 @@ const getAdminDashboardData = async () => {
     where: { caseStatus: "cancelled" },
   });
 
+  // Use EXTRACT for PostgreSQL, MONTH for MySQL
+  const isPostgres = sequelize.getDialect() === "postgres";
+  const monthExpr = isPostgres 
+    ? Sequelize.literal(`EXTRACT(MONTH FROM "User"."createdAt")`)
+    : Sequelize.fn("MONTH", Sequelize.col("createdAt"));
+
   const usersOverview = await User.findAll({
     attributes: [
-      [Sequelize.fn("MONTH", Sequelize.col("createdAt")), "month"],
+      [monthExpr, "month"],
       [Sequelize.fn("COUNT", Sequelize.col("userId")), "totalUsers"],
       [
         Sequelize.fn(
           "SUM",
-          Sequelize.literal(`CASE WHEN userType='inspector' THEN 1 ELSE 0 END`)
+          Sequelize.literal(`CASE WHEN "userType"='inspector' THEN 1 ELSE 0 END`)
         ),
         "totalInspectors",
       ],
       [
         Sequelize.fn(
           "SUM",
-          Sequelize.literal(`CASE WHEN userType='tenant' THEN 1 ELSE 0 END`)
+          Sequelize.literal(`CASE WHEN "userType"='tenant' THEN 1 ELSE 0 END`)
         ),
         "totalTenants",
       ],
     ],
-    group: ["month"],
+    group: [isPostgres ? Sequelize.literal(`EXTRACT(MONTH FROM "User"."createdAt")`) : Sequelize.literal(`MONTH(createdAt)`)],
     raw: true,
   });
+
+  const paymentMonthExpr = isPostgres
+    ? Sequelize.literal(`EXTRACT(MONTH FROM "Payment"."paymentDate")`)
+    : Sequelize.fn("MONTH", Sequelize.col("paymentDate"));
+
+  const refundSubquery = isPostgres
+    ? `(SELECT SUM("amount") FROM "Refund" WHERE EXTRACT(MONTH FROM "Refund"."requestDate") = EXTRACT(MONTH FROM "Payment"."paymentDate"))`
+    : `(SELECT SUM(amount) FROM Refund WHERE MONTH(requestDate) = MONTH(Payment.paymentDate))`;
 
   const revenueOverview = await Payment.findAll({
     attributes: [
-      [Sequelize.fn("MONTH", Sequelize.col("paymentDate")), "month"],
+      [paymentMonthExpr, "month"],
       [Sequelize.fn("SUM", Sequelize.col("paymentAmount")), "totalRevenue"],
       [
-        Sequelize.fn(
-          "SUM",
-          Sequelize.literal(
-            `(SELECT SUM(amount) FROM Refund WHERE MONTH(requestDate) = MONTH(Payment.paymentDate))`
-          )
-        ),
+        Sequelize.fn("SUM", Sequelize.literal(refundSubquery)),
         "totalRefunds",
       ],
     ],
-    group: ["month"],
+    group: [isPostgres ? Sequelize.literal(`EXTRACT(MONTH FROM "Payment"."paymentDate")`) : Sequelize.literal(`MONTH(paymentDate)`)],
     raw: true,
   });
 
+  const caseMonthExpr = isPostgres
+    ? Sequelize.literal(`EXTRACT(MONTH FROM "Case"."createdAt")`)
+    : Sequelize.fn("MONTH", Sequelize.col("createdAt"));
+
   const casesOverview = await Case.findAll({
     attributes: [
-      [Sequelize.fn("MONTH", Sequelize.col("createdAt")), "month"],
+      [caseMonthExpr, "month"],
       [Sequelize.fn("COUNT", Sequelize.col("caseId")), "totalCases"],
       [
         Sequelize.fn(
           "SUM",
           Sequelize.literal(
-            `CASE WHEN caseStatus='completed' THEN 1 ELSE 0 END`
+            `CASE WHEN "caseStatus"='completed' THEN 1 ELSE 0 END`
           )
         ),
         "totalCompleted",
@@ -96,13 +110,13 @@ const getAdminDashboardData = async () => {
         Sequelize.fn(
           "SUM",
           Sequelize.literal(
-            `CASE WHEN caseStatus='cancelled' THEN 1 ELSE 0 END`
+            `CASE WHEN "caseStatus"='cancelled' THEN 1 ELSE 0 END`
           )
         ),
         "totalCancelled",
       ],
     ],
-    group: ["month"],
+    group: [isPostgres ? Sequelize.literal(`EXTRACT(MONTH FROM "Case"."createdAt")`) : Sequelize.literal(`MONTH(createdAt)`)],
     raw: true,
   });
 

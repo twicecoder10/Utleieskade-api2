@@ -25,8 +25,8 @@ const getTenantById = async (tenantId) => {
       ["createdAt", "dateRegistered"],
       [
         Sequelize.literal(`(
-          SELECT COUNT(*) FROM \`Case\`
-          WHERE \`Case\`.\`userId\` = \`User\`.\`userId\`
+          SELECT COUNT(*) FROM "Case"
+          WHERE "Case"."userId" = "User"."userId"
         )`),
         "casesSubmitted",
       ],
@@ -59,8 +59,8 @@ const getAllTenants = async ({ search, page = 1, limit = 10 }) => {
       ["createdAt", "dateRegistered"],
       [
         Sequelize.literal(`(
-          SELECT COUNT(*) FROM \`Case\`
-          WHERE \`Case\`.\`userId\` = \`User\`.\`userId\`
+          SELECT COUNT(*) FROM "Case"
+          WHERE "Case"."userId" = "User"."userId"
         )`),
         "casesSubmitted",
       ],
