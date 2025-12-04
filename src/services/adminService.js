@@ -44,6 +44,10 @@ const getAdminDashboardData = async () => {
   const monthExpr = isPostgres 
     ? Sequelize.literal(`EXTRACT(MONTH FROM "User"."createdAt")`)
     : Sequelize.fn("MONTH", Sequelize.col("createdAt"));
+  
+  const groupByMonth = isPostgres 
+    ? Sequelize.literal(`EXTRACT(MONTH FROM "User"."createdAt")`)
+    : Sequelize.literal(`MONTH(createdAt)`);
 
   const usersOverview = await User.findAll({
     attributes: [
@@ -64,7 +68,7 @@ const getAdminDashboardData = async () => {
         "totalTenants",
       ],
     ],
-    group: [isPostgres ? Sequelize.literal(`EXTRACT(MONTH FROM "User"."createdAt")`) : Sequelize.literal(`MONTH(createdAt)`)],
+    group: [groupByMonth],
     raw: true,
   });
 
@@ -76,6 +80,10 @@ const getAdminDashboardData = async () => {
     ? `(SELECT SUM("amount") FROM "Refund" WHERE EXTRACT(MONTH FROM "Refund"."requestDate") = EXTRACT(MONTH FROM "Payment"."paymentDate"))`
     : `(SELECT SUM(amount) FROM Refund WHERE MONTH(requestDate) = MONTH(Payment.paymentDate))`;
 
+  const groupByPaymentMonth = isPostgres
+    ? Sequelize.literal(`EXTRACT(MONTH FROM "Payment"."paymentDate")`)
+    : Sequelize.literal(`MONTH(paymentDate)`);
+
   const revenueOverview = await Payment.findAll({
     attributes: [
       [paymentMonthExpr, "month"],
@@ -85,13 +93,17 @@ const getAdminDashboardData = async () => {
         "totalRefunds",
       ],
     ],
-    group: [isPostgres ? Sequelize.literal(`EXTRACT(MONTH FROM "Payment"."paymentDate")`) : Sequelize.literal(`MONTH(paymentDate)`)],
+    group: [groupByPaymentMonth],
     raw: true,
   });
 
   const caseMonthExpr = isPostgres
     ? Sequelize.literal(`EXTRACT(MONTH FROM "Case"."createdAt")`)
     : Sequelize.fn("MONTH", Sequelize.col("createdAt"));
+
+  const groupByCaseMonth = isPostgres
+    ? Sequelize.literal(`EXTRACT(MONTH FROM "Case"."createdAt")`)
+    : Sequelize.literal(`MONTH(createdAt)`);
 
   const casesOverview = await Case.findAll({
     attributes: [
@@ -116,7 +128,7 @@ const getAdminDashboardData = async () => {
         "totalCancelled",
       ],
     ],
-    group: [isPostgres ? Sequelize.literal(`EXTRACT(MONTH FROM "Case"."createdAt")`) : Sequelize.literal(`MONTH(createdAt)`)],
+    group: [groupByCaseMonth],
     raw: true,
   });
 
