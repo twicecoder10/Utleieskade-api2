@@ -19,17 +19,54 @@ const getAdminDashboardData = async () => {
   const totalTenants = await User.count({ where: { userType: "tenant" } });
   const totalLandlords = await User.count({ where: { userType: "landlord" } });
 
-  const totalRevenue = await Payment.sum("paymentAmount", {
-    where: { paymentStatus: "processed" },
-  });
+  // Use EXTRACT for PostgreSQL, MONTH for MySQL
+  const isPostgres = sequelize.getDialect() === "postgres";
 
-  const totalPayouts = await InspectorPayment.sum("paymentAmount", {
-    where: { paymentStatus: "processed" },
-  });
+  // Cast to numeric for PostgreSQL if columns are VARCHAR
+  const totalRevenue = isPostgres
+    ? await Payment.findAll({
+        attributes: [
+          [
+            Sequelize.fn("SUM", Sequelize.cast(Sequelize.col("paymentAmount"), "numeric")),
+            "total",
+          ],
+        ],
+        where: { paymentStatus: "processed" },
+        raw: true,
+      }).then((result) => parseFloat(result[0]?.total || 0))
+    : await Payment.sum("paymentAmount", {
+        where: { paymentStatus: "processed" },
+      });
 
-  const totalRefunds = await Refund.sum("amount", {
-    where: { refundStatus: "processed" },
-  });
+  const totalPayouts = isPostgres
+    ? await InspectorPayment.findAll({
+        attributes: [
+          [
+            Sequelize.fn("SUM", Sequelize.cast(Sequelize.col("paymentAmount"), "numeric")),
+            "total",
+          ],
+        ],
+        where: { paymentStatus: "processed" },
+        raw: true,
+      }).then((result) => parseFloat(result[0]?.total || 0))
+    : await InspectorPayment.sum("paymentAmount", {
+        where: { paymentStatus: "processed" },
+      });
+
+  const totalRefunds = isPostgres
+    ? await Refund.findAll({
+        attributes: [
+          [
+            Sequelize.fn("SUM", Sequelize.cast(Sequelize.col("amount"), "numeric")),
+            "total",
+          ],
+        ],
+        where: { refundStatus: "processed" },
+        raw: true,
+      }).then((result) => parseFloat(result[0]?.total || 0))
+    : await Refund.sum("amount", {
+        where: { refundStatus: "processed" },
+      });
 
   const totalCases = await Case.count();
   const totalCompleted = await Case.count({
@@ -39,8 +76,6 @@ const getAdminDashboardData = async () => {
     where: { caseStatus: "cancelled" },
   });
 
-  // Use EXTRACT for PostgreSQL, MONTH for MySQL
-  const isPostgres = sequelize.getDialect() === "postgres";
   const monthExpr = isPostgres 
     ? Sequelize.literal(`EXTRACT(MONTH FROM "User"."createdAt")`)
     : Sequelize.fn("MONTH", Sequelize.col("createdAt"));
@@ -77,8 +112,8 @@ const getAdminDashboardData = async () => {
     : Sequelize.fn("MONTH", Sequelize.col("paymentDate"));
 
   const refundSubquery = isPostgres
-    ? `(SELECT SUM("amount") FROM "Refund" WHERE EXTRACT(MONTH FROM "Refund"."requestDate") = EXTRACT(MONTH FROM "Payment"."paymentDate"))`
-    : `(SELECT SUM(amount) FROM Refund WHERE MONTH(requestDate) = MONTH(Payment.paymentDate))`;
+    ? `(SELECT COALESCE(SUM(CAST("amount" AS numeric)), 0) FROM "Refund" WHERE EXTRACT(MONTH FROM "Refund"."requestDate") = EXTRACT(MONTH FROM "Payment"."paymentDate") AND EXTRACT(YEAR FROM "Refund"."requestDate") = EXTRACT(YEAR FROM "Payment"."paymentDate"))`
+    : `(SELECT COALESCE(SUM(amount), 0) FROM Refund WHERE MONTH(requestDate) = MONTH(Payment.paymentDate) AND YEAR(requestDate) = YEAR(Payment.paymentDate))`;
 
   const groupByPaymentMonth = isPostgres
     ? Sequelize.literal(`EXTRACT(MONTH FROM "Payment"."paymentDate")`)
@@ -87,9 +122,17 @@ const getAdminDashboardData = async () => {
   const revenueOverview = await Payment.findAll({
     attributes: [
       [paymentMonthExpr, "month"],
-      [Sequelize.fn("SUM", Sequelize.col("paymentAmount")), "totalRevenue"],
       [
-        Sequelize.fn("SUM", Sequelize.literal(refundSubquery)),
+        Sequelize.fn(
+          "SUM",
+          isPostgres
+            ? Sequelize.cast(Sequelize.col("paymentAmount"), "numeric")
+            : Sequelize.col("paymentAmount")
+        ),
+        "totalRevenue",
+      ],
+      [
+        Sequelize.fn("MAX", Sequelize.literal(`(${refundSubquery})`)),
         "totalRefunds",
       ],
     ],
@@ -146,9 +189,11 @@ const getAdminDashboardData = async () => {
     overviewGraphs: {
       users: usersOverview,
       revenue: revenueOverview.map((r) => ({
-      ...r,
-      totalPayouts,
-    })),
+        ...r,
+        totalRevenue: parseFloat(r.totalRevenue || 0),
+        totalRefunds: parseFloat(r.totalRefunds || 0),
+        totalPayouts: parseFloat(totalPayouts || 0),
+      })),
       cases: casesOverview,
     },
   };
