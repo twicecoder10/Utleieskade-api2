@@ -399,6 +399,14 @@ router.get(
   inspectorController.getInspectorCases
 );
 
+// Alias for /inspectors/cases/available (used by frontend)
+router.get(
+  "/cases/available",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getInspectorCases
+);
+
 /**
  * @swagger
  * /inspectors/export:
@@ -711,6 +719,86 @@ router.delete(
   authMiddleware,
   authorizeRoles("inspector"),
   inspectorController.deleteInspector
+);
+
+/**
+ * @swagger
+ * /inspectors/actions/logs:
+ *   get:
+ *     summary: Get inspector action logs
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: query
+ *         name: actionType
+ *         schema:
+ *           type: string
+ *         description: Filter by action type
+ *       - in: query
+ *         name: caseId
+ *         schema:
+ *           type: string
+ *         description: Filter by case ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of logs per page
+ *     responses:
+ *       200:
+ *         description: Action logs retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+const actionLogController = require("../controllers/actionLogController");
+router.get(
+  "/actions/logs",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  actionLogController.getActionLogs
+);
+
+/**
+ * @swagger
+ * /inspectors/reports:
+ *   get:
+ *     summary: Get inspector reports
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of reports per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term
+ *     responses:
+ *       200:
+ *         description: Reports retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get(
+  "/reports",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getInspectorReports
 );
 
 module.exports = router;

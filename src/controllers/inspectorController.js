@@ -368,3 +368,28 @@ exports.deleteInspector = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.getInspectorReports = async (req, res) => {
+  try {
+    const { id: inspectorId } = req.user;
+    const { page = 1, limit = 20, search = "" } = req.query;
+
+    const reportsData = await inspectorService.getInspectorReports({
+      inspectorId,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+    });
+
+    responseHandler.setSuccess(
+      200,
+      "Inspector reports retrieved successfully",
+      reportsData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching inspector reports:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};

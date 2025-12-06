@@ -18,6 +18,13 @@ exports.getUserChats = async (req, res) => {
 exports.getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
+    
+    // Handle empty conversationId (trailing slash case)
+    if (!conversationId || conversationId.trim() === "") {
+      responseHandler.setError(400, "Conversation ID is required");
+      return responseHandler.send(res);
+    }
+    
     const messages = await chatService.getMessages(conversationId);
 
     responseHandler.setSuccess(

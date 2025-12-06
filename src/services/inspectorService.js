@@ -41,12 +41,48 @@ const getInspectorDasboard = async (inspectorId) => {
 
   const totalEarnings = await InspectorPayment.sum("paymentAmount", {
     where: { inspectorId },
+  }) || 0;
+
+  // Get prioritized cases (open cases with deadlines)
+  const prioritizedCases = await Case.findAll({
+    where: {
+      inspectorId,
+      caseStatus: "open",
+    },
+    attributes: [
+      ["caseId", "caseId"],
+      ["caseDescription", "caseDescription"],
+      ["caseStatus", "status"],
+      ["deadline", "deadline"],
+      ["createdAt", "createdAt"],
+    ],
+    include: [
+      {
+        model: User,
+        as: "tenant",
+        attributes: [
+          ["userId", "tenantId"],
+          "userFirstName",
+          "userLastName",
+        ],
+      },
+    ],
+    order: [["deadline", "ASC"]],
+    limit: 10,
   });
+
+  // Calculate total work hours and minutes from case timers
+  // For now, return 0 if timer functionality doesn't exist
+  const totalWorkHours = 0;
+  const totalWorkMinutes = 0;
 
   return {
     welcomeMessage: `Welcome back ${inspector?.userFirstName || "User"} 👋`,
     totalEarnings,
     activeCases,
+    prioritizedCases,
+    totalWorkHours,
+    totalWorkMinutes,
   };
 };
 
@@ -189,29 +225,38 @@ const getInspectorCases = async ({
 };
 
 const getInspectorEarnings = async (inspectorId) => {
-  const totalBalance = await InspectorPayment.sum("paymentAmount", {
-    where: {
-      inspectorId,
-      paymentStatus: "pending",
-    },
-  });
+  try {
+    const totalBalance = await InspectorPayment.sum("paymentAmount", {
+      where: {
+        inspectorId,
+        paymentStatus: "pending",
+      },
+    }) || 0;
 
-  const payoutHistory = await InspectorPayment.findAll({
-    where: { inspectorId },
-    attributes: [
-      ["paymentDate", "date"],
-      ["paymentId", "referenceNumber"],
-      ["paymentAmount", "amount"],
-      ["paymentStatus", "status"],
-    ],
-    order: [["paymentDate", "DESC"]],
-    raw: true,
-  });
+    const payoutHistory = await InspectorPayment.findAll({
+      where: { inspectorId },
+      attributes: [
+        ["paymentDate", "date"],
+        ["paymentId", "referenceNumber"],
+        ["paymentAmount", "amount"],
+        ["paymentStatus", "status"],
+      ],
+      order: [["paymentDate", "DESC"]],
+      raw: true,
+    }) || [];
 
-  return {
-    totalBalance: totalBalance || 0,
-    payoutHistory,
-  };
+    return {
+      totalBalance,
+      payoutHistory: payoutHistory.map((payment) => ({
+        ...payment,
+        amount: payment.amount || 0,
+        cases: 0, // TODO: Add case count if needed
+      })),
+    };
+  } catch (error) {
+    console.error("Error in getInspectorEarnings:", error);
+    throw error;
+  }
 };
 
 const requestPayout = async ({ inspectorId, amount, userPassword }) => {
@@ -429,6 +474,53 @@ const deleteInspector = async (inspectorId) => {
   return inspector;
 };
 
+const getInspectorReports = async ({ inspectorId, page, limit, search }) => {
+  const { Report, Case, AssessmentSummary } = require("../models/index");
+  const offset = (page - 1) * limit;
+  const whereClause = { inspectorId };
+
+  if (search) {
+    whereClause.reportDescription = { [Op.like]: `%${search}%` };
+  }
+
+  const { rows: reports, count: totalReports } = await Report.findAndCountAll({
+    where: whereClause,
+    include: [
+      {
+        model: Case,
+        attributes: [
+          ["caseId", "caseID"],
+          ["caseDescription", "caseDescription"],
+        ],
+      },
+      {
+        model: AssessmentSummary,
+        as: "assessmentSummary",
+        attributes: [
+          ["sumInclVAT", "total"],
+        ],
+        required: false,
+      },
+    ],
+    attributes: [
+      ["reportId", "reportId"],
+      ["caseId", "caseId"],
+      ["reportDescription", "description"],
+      ["createdAt", "date"],
+    ],
+    limit: parseInt(limit),
+    offset,
+    order: [["createdAt", "DESC"]],
+  });
+
+  return {
+    reports,
+    totalReports,
+    totalPages: Math.ceil(totalReports / limit),
+    currentPage: parseInt(page),
+  };
+};
+
 module.exports = {
   getInspectorById,
   getAllInspectors,
@@ -442,4 +534,5 @@ module.exports = {
   getInspectorSettings,
   updateInspectorSettings,
   deleteInspector,
+  getInspectorReports,
 };
