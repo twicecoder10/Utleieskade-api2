@@ -24,15 +24,20 @@ try {
   appSetup.socketIOSetup(server);
 
   // Attempt database connection (non-blocking)
-  sequelize.connectionPromise
-    .then(() => {
-      console.log("✅ Database connection established");
-    })
-    .catch((error) => {
-      console.error("⚠️ Database connection failed (server still running):", error.message);
-      console.error("⚠️ API will respond but database operations will fail");
-      // Don't exit - let server continue running
-    });
+  // Check if connectionPromise exists before using it
+  if (sequelize.connectionPromise) {
+    sequelize.connectionPromise
+      .then(() => {
+        console.log("✅ Database connection established");
+      })
+      .catch((error) => {
+        console.error("⚠️ Database connection failed (server still running):", error?.message || error);
+        console.error("⚠️ API will respond but database operations will fail");
+        // Don't exit - let server continue running
+      });
+  } else {
+    console.log("⚠️ Database connectionPromise not available - server running without DB");
+  }
 } catch (error) {
   console.error("❌ Fatal error starting server:", error);
   console.error(error.stack);
