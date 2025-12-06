@@ -92,6 +92,46 @@ router.get(
   chatController.getMessages
 );
 
+/**
+ * @swagger
+ * /chats/get-admin-chats:
+ *   get:
+ *     summary: Fetch admin conversations
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Chat]
+ *     description: Retrieves a list of conversations for admin users.
+ *     responses:
+ *       200:
+ *         description: List of admin conversations retrieved successfully.
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/get-admin-chats", authMiddleware, chatController.getAdminChats);
+
+/**
+ * @swagger
+ * /chats/get-chattable-users:
+ *   get:
+ *     summary: Get list of users admin can chat with
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Chat]
+ *     description: Retrieves a list of users (inspectors, tenants, landlords) that admin can start conversations with.
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search users by name or email
+ *     responses:
+ *       200:
+ *         description: List of chattable users retrieved successfully.
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/get-chattable-users", authMiddleware, chatController.getChattableUsers);
+
 // /**
 //  * @swagger
 //  * /chats/send-message:

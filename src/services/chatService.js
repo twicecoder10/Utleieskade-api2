@@ -105,4 +105,74 @@ const markMessagesAsRead = async (conversationId, userId) => {
   );
 };
 
-module.exports = { getUserChats, sendMessage, getMessages, markMessagesAsRead };
+const getAdminChats = async (adminId) => {
+  return await Conversation.findAll({
+    where: {
+      [Op.or]: [{ userOne: adminId }, { userTwo: adminId }],
+    },
+    include: [
+      {
+        model: User,
+        as: "UserOneDetails",
+        attributes: [
+          "userId",
+          "userFirstName",
+          "userLastName",
+          "userProfilePic",
+          "userType",
+          "userEmail",
+        ],
+      },
+      {
+        model: User,
+        as: "UserTwoDetails",
+        attributes: [
+          "userId",
+          "userFirstName",
+          "userLastName",
+          "userProfilePic",
+          "userType",
+          "userEmail",
+        ],
+      },
+    ],
+    order: [["lastMessageTimestamp", "DESC"]],
+  });
+};
+
+const getChattableUsers = async (adminId, search = "") => {
+  const whereClause = {
+    userId: { [Op.ne]: adminId }, // Exclude admin
+    userType: { [Op.in]: ["inspector", "tenant", "landlord"] }, // Only these user types
+  };
+
+  if (search) {
+    whereClause[Op.or] = [
+      { userFirstName: { [Op.like]: `%${search}%` } },
+      { userLastName: { [Op.like]: `%${search}%` } },
+      { userEmail: { [Op.like]: `%${search}%` } },
+    ];
+  }
+
+  return await User.findAll({
+    where: whereClause,
+    attributes: [
+      "userId",
+      "userFirstName",
+      "userLastName",
+      "userEmail",
+      "userProfilePic",
+      "userType",
+    ],
+    order: [["userFirstName", "ASC"]],
+  });
+};
+
+module.exports = {
+  getUserChats,
+  sendMessage,
+  getMessages,
+  markMessagesAsRead,
+  getAdminChats,
+  getChattableUsers,
+};

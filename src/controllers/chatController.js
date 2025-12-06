@@ -51,3 +51,32 @@ exports.sendMessage = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.getAdminChats = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const chats = await chatService.getAdminChats(adminId);
+
+    responseHandler.setSuccess(200, "Admin chats retrieved successfully", chats);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error retrieving admin chats: ", error);
+    responseHandler.setError(500, "Internal server error!");
+    return responseHandler.send(res);
+  }
+};
+
+exports.getChattableUsers = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const { search } = req.query;
+    const users = await chatService.getChattableUsers(adminId, search || "");
+
+    responseHandler.setSuccess(200, "Chattable users retrieved successfully", users);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error retrieving chattable users: ", error);
+    responseHandler.setError(500, "Internal server error!");
+    return responseHandler.send(res);
+  }
+};
