@@ -234,6 +234,54 @@ exports.exportDashboardReport = async (req, res) => {
   }
 };
 
+exports.getPerformanceMetrics = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    // TODO: Implement performance metrics calculation
+    // For now, return placeholder data
+    const metrics = {
+      totalCases: 0,
+      completedCases: 0,
+      averageCompletionTime: 0,
+      totalRevenue: 0,
+      totalPayouts: 0,
+      activeInspectors: 0,
+      activeTenants: 0,
+    };
+
+    responseHandler.setSuccess(200, "Performance metrics retrieved successfully", metrics);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error getting performance metrics: ", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
+exports.getEarningsReport = async (req, res) => {
+  try {
+    const { period = "monthly", startDate, endDate } = req.query;
+    
+    // TODO: Implement earnings report calculation
+    // For now, return placeholder data
+    const earnings = {
+      period,
+      totalRevenue: 0,
+      totalPayouts: 0,
+      netEarnings: 0,
+      data: [],
+    };
+
+    responseHandler.setSuccess(200, "Earnings report retrieved successfully", earnings);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error getting earnings report: ", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
 exports.updateInspectorByAdmin = async (req, res) => {
   try {
     const inspectorId = req.params.inspectorId;

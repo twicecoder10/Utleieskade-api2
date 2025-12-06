@@ -490,4 +490,73 @@ router.put(
   adminController.updateInspectorByAdmin
 );
 
+/**
+ * @swagger
+ * /admins/reports/performance-metrics:
+ *   get:
+ *     summary: Get performance metrics
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *         description: Start date for metrics
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *         description: End date for metrics
+ *     responses:
+ *       200:
+ *         description: Performance metrics retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get(
+  "/reports/performance-metrics",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  adminController.getPerformanceMetrics
+);
+
+/**
+ * @swagger
+ * /admins/reports/earnings:
+ *   get:
+ *     summary: Get earnings report
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *         description: Period (monthly, weekly, daily)
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *         description: Start date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *         description: End date
+ *     responses:
+ *       200:
+ *         description: Earnings report retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get(
+  "/reports/earnings",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  adminController.getEarningsReport
+);
+
 module.exports = router;

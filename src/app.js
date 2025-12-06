@@ -42,6 +42,8 @@ const fileRoutes = require("./routes/fileRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const expertiseRoutes = require("./routes/expertiseRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const actionLogRoutes = require("./routes/actionLogRoutes");
 const { socketAuth } = require("./middlewares/socketAuth");
 
 app.use("/admins", adminRoutes);
@@ -56,6 +58,8 @@ app.use("/files", fileRoutes);
 app.use("/chats", chatRoutes);
 app.use("/expertises", expertiseRoutes);
 app.use("/settings", settingsRoutes);
+app.use("/notifications", notificationRoutes);
+app.use("/action-logs", actionLogRoutes);
 
 app.use(errorMiddleware);
 
