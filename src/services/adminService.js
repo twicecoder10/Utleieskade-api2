@@ -112,7 +112,7 @@ const getAdminDashboardData = async () => {
     : Sequelize.fn("MONTH", Sequelize.col("paymentDate"));
 
   const refundSubquery = isPostgres
-    ? `(SELECT COALESCE(SUM(CAST("amount" AS numeric)), 0) FROM "Refund" WHERE EXTRACT(MONTH FROM "Refund"."requestDate") = EXTRACT(MONTH FROM "Payment"."paymentDate") AND EXTRACT(YEAR FROM "Refund"."requestDate") = EXTRACT(YEAR FROM "Payment"."paymentDate"))`
+    ? `(SELECT COALESCE(SUM(CAST("amount" AS numeric)), 0)::numeric FROM "Refund" WHERE EXTRACT(MONTH FROM "Refund"."requestDate") = EXTRACT(MONTH FROM "Payment"."paymentDate") AND EXTRACT(YEAR FROM "Refund"."requestDate") = EXTRACT(YEAR FROM "Payment"."paymentDate"))`
     : `(SELECT COALESCE(SUM(amount), 0) FROM Refund WHERE MONTH(requestDate) = MONTH(Payment.paymentDate) AND YEAR(requestDate) = YEAR(Payment.paymentDate))`;
 
   const groupByPaymentMonth = isPostgres
@@ -132,7 +132,12 @@ const getAdminDashboardData = async () => {
         "totalRevenue",
       ],
       [
-        Sequelize.fn("MAX", Sequelize.literal(`(${refundSubquery})`)),
+        Sequelize.fn(
+          "MAX",
+          isPostgres
+            ? Sequelize.cast(Sequelize.literal(`(${refundSubquery})`), "numeric")
+            : Sequelize.literal(`(${refundSubquery})`)
+        ),
         "totalRefunds",
       ],
     ],
