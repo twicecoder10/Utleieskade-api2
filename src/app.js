@@ -41,9 +41,10 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
-// Manual CORS middleware as fallback
+// Manual CORS middleware as fallback - MUST be first
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  // Always set CORS headers for allowed origins
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -56,32 +57,30 @@ app.use((req, res, next) => {
       "Content-Type, Authorization, Accept, X-Requested-With"
     );
     res.setHeader("Access-Control-Expose-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
   }
   next();
 });
 
 // Handle preflight OPTIONS requests - MUST be before other routes
 app.options("*", (req, res) => {
-  try {
-    const origin = req.headers.origin;
-    if (origin && allowedOrigins.includes(origin)) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
-      res.setHeader("Access-Control-Allow-Credentials", "true");
-      res.setHeader(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-      );
-      res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization, Accept, X-Requested-With"
-      );
-      res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
-    }
-    res.status(204).end();
-  } catch (error) {
-    console.error("OPTIONS handler error:", error);
-    res.status(204).end();
+  const origin = req.headers.origin;
+  // Always respond to OPTIONS, but only set CORS headers for allowed origins
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Accept, X-Requested-With"
+    );
+    res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
   }
+  // Always respond with 204 for OPTIONS, even if origin not allowed
+  res.status(204).end();
 });
 
 // Apply CORS middleware (as additional layer)
