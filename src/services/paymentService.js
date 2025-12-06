@@ -22,6 +22,33 @@ const getPayments = async ({
     ];
   }
 
+  const isPostgres = InspectorPayment.sequelize.getDialect() === "postgres";
+  
+  // Use proper table alias for subqueries
+  const completedCasesSubquery = isPostgres
+    ? `(
+        SELECT COUNT(*) FROM "Case"
+        WHERE "Case"."inspectorId" = "inspector"."userId"
+        AND "Case"."caseStatus" = 'completed'
+      )`
+    : `(
+        SELECT COUNT(*) FROM Case
+        WHERE Case.inspectorId = inspector.userId
+        AND Case.caseStatus = 'completed'
+      )`;
+
+  const totalPaidAmountSubquery = isPostgres
+    ? `(
+        SELECT COALESCE(SUM(CAST("paymentAmount" AS numeric)), 0) FROM "InspectorPayment"
+        WHERE "InspectorPayment"."inspectorId" = "inspector"."userId"
+        AND "InspectorPayment"."paymentStatus" = 'processed'
+      )`
+    : `(
+        SELECT COALESCE(SUM(paymentAmount), 0) FROM InspectorPayment
+        WHERE InspectorPayment.inspectorId = inspector.userId
+        AND InspectorPayment.paymentStatus = 'processed'
+      )`;
+
   const { rows: payments, count: totalPayments } =
     await InspectorPayment.findAndCountAll({
       where: whereClause,
@@ -34,19 +61,11 @@ const getPayments = async ({
             ["userLastName", "lastName"],
             ["userEmail", "email"],
             [
-              Sequelize.literal(`(
-                SELECT COUNT(*) FROM "Case"
-                WHERE "Case"."inspectorId" = "User"."userId"
-                AND "Case"."caseStatus" = 'completed'
-              )`),
+              Sequelize.literal(completedCasesSubquery),
               "completedCases",
             ],
             [
-              Sequelize.literal(`(
-                SELECT SUM("paymentAmount") FROM "InspectorPayment"
-                WHERE "InspectorPayment"."inspectorId" = "User"."userId"
-                AND "InspectorPayment"."paymentStatus" = 'processed'
-              )`),
+              Sequelize.literal(totalPaidAmountSubquery),
               "totalPaidAmount",
             ],
           ],
@@ -55,6 +74,7 @@ const getPayments = async ({
       limit: parseInt(limit),
       offset,
       order: [[sortBy, sortOrder]],
+      distinct: true, // Important for PostgreSQL when using includes with count
     });
 
   return {
