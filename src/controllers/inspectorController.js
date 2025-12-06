@@ -128,6 +128,20 @@ exports.getAllInspectors = async (req, res) => {
       limit: parseInt(limit) || 10,
     });
 
+    // Ensure we always return a valid response even if no inspectors found
+    if (!inspectorsData) {
+      return responseHandler.setSuccess(
+        200,
+        "Inspectors retrieved successfully",
+        {
+          inspectors: [],
+          totalInspectors: 0,
+          totalPages: 0,
+          currentPage: parseInt(page) || 1,
+        }
+      );
+    }
+
     responseHandler.setSuccess(
       200,
       "Inspectors retrieved successfully",
@@ -135,7 +149,8 @@ exports.getAllInspectors = async (req, res) => {
     );
     return responseHandler.send(res);
   } catch (error) {
-    responseHandler.setError(500, error.message);
+    console.error("Error fetching inspectors:", error);
+    responseHandler.setError(500, error.message || "Failed to fetch inspectors");
     return responseHandler.send(res);
   }
 };

@@ -89,11 +89,13 @@ const getAllInspectors = async ({ search, page = 1, limit = 10 }) => {
           as: "expertises",
           attributes: ["expertiseCode", "expertiseArea", "expertiseDescription"],
           through: { attributes: [] },
+          required: false, // Left join - don't require expertise to exist
         },
       ],
       limit: parseInt(limit),
       offset,
       order: [["createdAt", "DESC"]],
+      distinct: true, // Important for PostgreSQL when using includes with count
     });
 
   return {
