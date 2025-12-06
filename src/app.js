@@ -21,35 +21,42 @@ const allowedOrigins = [
   "http://localhost:3003",
 ];
 
-// Universal CORS handler - applies to ALL requests - MUST BE FIRST
+// ABSOLUTE FIRST: Handle ALL OPTIONS requests immediately
+app.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  console.log(`[CORS] OPTIONS request from: ${origin}`);
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
+    res.setHeader("Access-Control-Max-Age", "86400");
+    console.log(`[CORS] Allowed OPTIONS for: ${origin}`);
+  } else {
+    console.log(`[CORS] Rejected OPTIONS for: ${origin}`);
+  }
+  
+  return res.status(204).end();
+});
+
+// Universal CORS handler for ALL other requests
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  // Log for debugging (remove in production if too verbose)
-  if (req.method === "OPTIONS") {
-    console.log(`[CORS] OPTIONS request from origin: ${origin}`);
-  }
-  
-  // Set CORS headers for allowed origins
+  // Set CORS headers for allowed origins on ALL requests
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
     res.setHeader("Access-Control-Expose-Headers", "Content-Type, Authorization");
-    res.setHeader("Access-Control-Max-Age", "86400");
-  }
-  
-  // Handle preflight OPTIONS requests immediately - BEFORE any routing
-  if (req.method === "OPTIONS") {
-    console.log(`[CORS] Responding to OPTIONS with 204`);
-    return res.status(204).end();
   }
   
   next();
 });
 
-// Additional CORS middleware using cors package
+// Additional CORS middleware using cors package (backup)
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
