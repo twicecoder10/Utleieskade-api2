@@ -82,6 +82,11 @@ exports.getTenantDashboard = async (req, res) => {
   try {
     const { id: userId } = req.user;
 
+    if (!userId) {
+      responseHandler.setError(400, "User ID is required");
+      return responseHandler.send(res);
+    }
+
     const dashboardData = await inspectorService.getInspectorDasboard(userId);
 
     responseHandler.setSuccess(
@@ -91,7 +96,8 @@ exports.getTenantDashboard = async (req, res) => {
     );
     return responseHandler.send(res);
   } catch (error) {
-    responseHandler.setError(500, error.message);
+    console.error("Error in getTenantDashboard:", error);
+    responseHandler.setError(500, error.message || "Internal server error");
     return responseHandler.send(res);
   }
 };

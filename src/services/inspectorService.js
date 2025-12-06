@@ -27,63 +27,70 @@ const createInspector = async (inspectorData, inspectorExpertiseCodes) => {
 };
 
 const getInspectorDasboard = async (inspectorId) => {
-  const inspector = await User.findOne({
-    where: { userId: inspectorId, userType: "inspector" },
-    attributes: ["userFirstName", "userLastName"],
-  });
+  try {
+    const inspector = await User.findOne({
+      where: { userId: inspectorId, userType: "inspector" },
+      attributes: ["userFirstName", "userLastName"],
+    });
 
-  const activeCases = await Case.count({
-    where: {
-      inspectorId,
-      caseStatus: "open",
-    },
-  });
-
-  const totalEarnings = await InspectorPayment.sum("paymentAmount", {
-    where: { inspectorId },
-  }) || 0;
-
-  // Get prioritized cases (open cases with deadlines)
-  const prioritizedCases = await Case.findAll({
-    where: {
-      inspectorId,
-      caseStatus: "open",
-    },
-    attributes: [
-      ["caseId", "caseId"],
-      ["caseDescription", "caseDescription"],
-      ["caseStatus", "status"],
-      ["deadline", "deadline"],
-      ["createdAt", "createdAt"],
-    ],
-    include: [
-      {
-        model: User,
-        as: "tenant",
-        attributes: [
-          ["userId", "tenantId"],
-          "userFirstName",
-          "userLastName",
-        ],
+    const activeCases = await Case.count({
+      where: {
+        inspectorId,
+        caseStatus: "open",
       },
-    ],
-    order: [["deadline", "ASC"]],
-    limit: 10,
-  });
+    }) || 0;
 
-  // Calculate total work hours and minutes from case timers
-  // For now, return 0 if timer functionality doesn't exist
-  const totalWorkHours = 0;
-  const totalWorkMinutes = 0;
+    const totalEarnings = await InspectorPayment.sum("paymentAmount", {
+      where: { inspectorId },
+    }) || 0;
 
-  return {
-    welcomeMessage: `Welcome back ${inspector?.userFirstName || "User"} 👋`,
-    totalEarnings,
-    activeCases,
-    prioritizedCases,
-    totalWorkHours,
-    totalWorkMinutes,
-  };
+    // Get prioritized cases (open cases with deadlines)
+    const prioritizedCases = await Case.findAll({
+      where: {
+        inspectorId,
+        caseStatus: "open",
+      },
+      attributes: [
+        ["caseId", "caseId"],
+        ["caseDescription", "caseDescription"],
+        ["caseStatus", "status"],
+        ["caseDeadline", "deadline"],
+        ["caseUrgencyLevel", "urgency"],
+        ["createdAt", "createdAt"],
+      ],
+      include: [
+        {
+          model: User,
+          as: "tenant",
+          attributes: [
+            ["userId", "tenantId"],
+            "userFirstName",
+            "userLastName",
+          ],
+          required: false,
+        },
+      ],
+      order: [["caseDeadline", "ASC NULLS LAST"]],
+      limit: 10,
+    }) || [];
+
+    // Calculate total work hours and minutes from case timers
+    // For now, return 0 if timer functionality doesn't exist
+    const totalWorkHours = 0;
+    const totalWorkMinutes = 0;
+
+    return {
+      welcomeMessage: `Welcome back ${inspector?.userFirstName || "User"} 👋`,
+      totalEarnings: totalEarnings || 0,
+      activeCases: activeCases || 0,
+      prioritizedCases: prioritizedCases || [],
+      totalWorkHours: totalWorkHours || 0,
+      totalWorkMinutes: totalWorkMinutes || 0,
+    };
+  } catch (error) {
+    console.error("Error in getInspectorDasboard:", error);
+    throw error;
+  }
 };
 
 const getInspectorById = async (inspectorId) => {
