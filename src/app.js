@@ -9,8 +9,7 @@ const handleSocketEvents = require("./socket/socketControllers");
 
 const app = express();
 
-
-// CORS configuration
+// CORS configuration - SIMPLIFIED AND BULLETPROOF
 const allowedOrigins = [
   "https://utleieskade-admin.vercel.app",
   "https://utleieskade-inspector.vercel.app",
@@ -22,69 +21,43 @@ const allowedOrigins = [
   "http://localhost:3003",
 ];
 
+// Universal CORS handler - applies to ALL requests
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
+    res.header("Access-Control-Expose-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Max-Age", "86400");
+  }
+  
+  // Handle preflight OPTIONS requests immediately
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  
+  next();
+});
 
-const corsOptions = {
+// Additional CORS middleware using cors package
+app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
     }
   },
+  credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
   exposedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204,
-};
-
-// Manual CORS middleware as fallback - MUST be first
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  // Always set CORS headers for allowed origins
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept, X-Requested-With"
-    );
-    res.setHeader("Access-Control-Expose-Headers", "Content-Type, Authorization");
-    res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
-  }
-  next();
-});
-
-// Handle preflight OPTIONS requests - MUST be before other routes
-app.options("*", (req, res) => {
-  const origin = req.headers.origin;
-  // Always respond to OPTIONS, but only set CORS headers for allowed origins
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept, X-Requested-With"
-    );
-    res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
-  }
-  // Always respond with 204 for OPTIONS, even if origin not allowed
-  res.status(204).end();
-});
-
-// Apply CORS middleware (as additional layer)
-app.use(cors(corsOptions));
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
