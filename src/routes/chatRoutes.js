@@ -132,6 +132,36 @@ router.get("/get-admin-chats", authMiddleware, chatController.getAdminChats);
  */
 router.get("/get-chattable-users", authMiddleware, chatController.getChattableUsers);
 
+/**
+ * @swagger
+ * /chats/get-communication-history/{userId}:
+ *   get:
+ *     summary: Get communication history with a specific user
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Chat]
+ *     description: Retrieves the conversation and all messages between admin and a specific user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID to get communication history with
+ *     responses:
+ *       200:
+ *         description: Communication history retrieved successfully.
+ *       400:
+ *         description: User ID is required
+ *       401:
+ *         description: Unauthorized
+ */
+router.get(
+  "/get-communication-history/:userId",
+  authMiddleware,
+  chatController.getCommunicationHistory
+);
+
 // /**
 //  * @swagger
 //  * /chats/send-message:

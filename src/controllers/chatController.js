@@ -80,3 +80,28 @@ exports.getChattableUsers = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.getCommunicationHistory = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const { userId } = req.params;
+
+    if (!userId) {
+      responseHandler.setError(400, "User ID is required");
+      return responseHandler.send(res);
+    }
+
+    const history = await chatService.getCommunicationHistory(adminId, userId);
+
+    responseHandler.setSuccess(
+      200,
+      "Communication history retrieved successfully",
+      history
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error retrieving communication history: ", error);
+    responseHandler.setError(500, "Internal server error!");
+    return responseHandler.send(res);
+  }
+};

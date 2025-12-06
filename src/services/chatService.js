@@ -168,6 +168,69 @@ const getChattableUsers = async (adminId, search = "") => {
   });
 };
 
+const getCommunicationHistory = async (adminId, userId) => {
+  // Find or get the conversation between admin and user
+  const conversation = await Conversation.findOne({
+    where: {
+      [Op.or]: [
+        { userOne: adminId, userTwo: userId },
+        { userOne: userId, userTwo: adminId },
+      ],
+    },
+    include: [
+      {
+        model: User,
+        as: "UserOneDetails",
+        attributes: [
+          "userId",
+          "userFirstName",
+          "userLastName",
+          "userProfilePic",
+          "userType",
+          "userEmail",
+        ],
+      },
+      {
+        model: User,
+        as: "UserTwoDetails",
+        attributes: [
+          "userId",
+          "userFirstName",
+          "userLastName",
+          "userProfilePic",
+          "userType",
+          "userEmail",
+        ],
+      },
+    ],
+  });
+
+  // Get all messages for this conversation
+  const messages = conversation
+    ? await Message.findAll({
+        where: { conversationId: conversation.conversationId },
+        include: [
+          {
+            model: User,
+            as: "sender",
+            attributes: [
+              "userId",
+              "userFirstName",
+              "userLastName",
+              "userProfilePic",
+            ],
+          },
+        ],
+        order: [["sentAt", "ASC"]],
+      })
+    : [];
+
+  return {
+    conversation: conversation || null,
+    messages: messages || [],
+  };
+};
+
 module.exports = {
   getUserChats,
   sendMessage,
@@ -175,4 +238,5 @@ module.exports = {
   markMessagesAsRead,
   getAdminChats,
   getChattableUsers,
+  getCommunicationHistory,
 };
