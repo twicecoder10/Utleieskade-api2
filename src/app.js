@@ -27,6 +27,8 @@ app.use((req, res, next) => {
   if (req.method === "OPTIONS") {
     const origin = req.headers.origin;
     console.log(`[CORS] OPTIONS request from: ${origin} to ${req.path}`);
+    console.log(`[CORS] Allowed origins:`, allowedOrigins);
+    console.log(`[CORS] Origin in list:`, origin && allowedOrigins.includes(origin));
     
     if (origin && allowedOrigins.includes(origin)) {
       res.setHeader("Access-Control-Allow-Origin", origin);
@@ -34,10 +36,10 @@ app.use((req, res, next) => {
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
       res.setHeader("Access-Control-Max-Age", "86400");
-      console.log(`[CORS] ✅ Allowed OPTIONS for: ${origin}`);
+      console.log(`[CORS] ✅ Allowed OPTIONS for: ${origin} - Headers set`);
       return res.status(204).end();
     } else {
-      console.log(`[CORS] ❌ Rejected OPTIONS for: ${origin}`);
+      console.log(`[CORS] ❌ Rejected OPTIONS for: ${origin || "NO ORIGIN"}`);
       // Still respond with 204 even if origin not allowed (to avoid browser errors)
       return res.status(204).end();
     }
