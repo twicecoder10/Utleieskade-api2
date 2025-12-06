@@ -58,22 +58,28 @@ app.use((req, res, next) => {
   next();
 });
 
-// Handle preflight OPTIONS requests
+// Handle preflight OPTIONS requests - MUST be before other routes
 app.options("*", (req, res) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept, X-Requested-With"
-    );
+  try {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+      );
+      res.setHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization, Accept, X-Requested-With"
+      );
+      res.setHeader("Access-Control-Max-Age", "86400"); // 24 hours
+    }
+    res.status(204).end();
+  } catch (error) {
+    console.error("OPTIONS handler error:", error);
+    res.status(204).end();
   }
-  res.status(204).end();
 });
 
 // Apply CORS middleware (as additional layer)
