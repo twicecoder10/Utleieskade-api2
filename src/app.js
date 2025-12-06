@@ -11,16 +11,31 @@ const app = express();
 
 app.use(
   cors({
-    origin: [
-      "https://utleieskade-admin.vercel.app",
-      "https://utleieskade-inspector.vercel.app",
-      "https://utleieskade-tenant.vercel.app",
-      "https://utleieskade-landing.vercel.app",
-      "http://localhost:3000",
-    ],
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        "https://utleieskade-admin.vercel.app",
+        "https://utleieskade-inspector.vercel.app",
+        "https://utleieskade-tenant.vercel.app",
+        "https://utleieskade-landing.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+      ];
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+    exposedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
 app.use(express.json());
