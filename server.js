@@ -29,8 +29,8 @@ const PORT = process.env.PORT || 3000;
     sequelize.connectionPromise
       .then(() => {
         console.log("✅ Database connection established");
-  })
-  .catch((error) => {
+      })
+      .catch((error) => {
         console.error("⚠️ Database connection failed (server still running):", error?.message || error);
         console.error("⚠️ API will respond but database operations will fail");
         // Don't exit - let server continue running
@@ -41,5 +41,5 @@ const PORT = process.env.PORT || 3000;
 } catch (error) {
   console.error("❌ Fatal error starting server:", error);
   console.error(error.stack);
-    process.exit(1);
+  process.exit(1);
 }
