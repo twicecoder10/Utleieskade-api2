@@ -21,21 +21,28 @@ const allowedOrigins = [
   "http://localhost:3003",
 ];
 
-// Universal CORS handler - applies to ALL requests
+// Universal CORS handler - applies to ALL requests - MUST BE FIRST
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
-    res.header("Access-Control-Expose-Headers", "Content-Type, Authorization");
-    res.header("Access-Control-Max-Age", "86400");
+  // Log for debugging (remove in production if too verbose)
+  if (req.method === "OPTIONS") {
+    console.log(`[CORS] OPTIONS request from origin: ${origin}`);
   }
   
-  // Handle preflight OPTIONS requests immediately
+  // Set CORS headers for allowed origins
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Max-Age", "86400");
+  }
+  
+  // Handle preflight OPTIONS requests immediately - BEFORE any routing
   if (req.method === "OPTIONS") {
+    console.log(`[CORS] Responding to OPTIONS with 204`);
     return res.status(204).end();
   }
   
@@ -100,6 +107,18 @@ app.use("/action-logs", actionLogRoutes);
 app.use(errorMiddleware);
 
 setupSwagger(app);
+
+// Test endpoint to verify CORS is working
+app.get("/test-cors", (req, res) => {
+  const origin = req.headers.origin;
+  res.json({
+    message: "CORS test endpoint",
+    origin: origin,
+    allowed: allowedOrigins.includes(origin || ""),
+    timestamp: new Date().toISOString(),
+    version: "dcc46a8-simplified-cors"
+  });
+});
 
 app.get("/", (req, res) => {
   res.render("index", {
