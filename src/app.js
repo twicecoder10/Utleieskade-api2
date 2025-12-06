@@ -9,6 +9,7 @@ const handleSocketEvents = require("./socket/socketControllers");
 
 const app = express();
 
+
 // CORS configuration
 const allowedOrigins = [
   "https://utleieskade-admin.vercel.app",
@@ -20,6 +21,7 @@ const allowedOrigins = [
   "http://localhost:3002",
   "http://localhost:3003",
 ];
+
 
 const corsOptions = {
   origin: function (origin, callback) {
