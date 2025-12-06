@@ -21,10 +21,34 @@ const allowedOrigins = [
   "http://localhost:3003",
 ];
 
-// ABSOLUTE FIRST: Handle ALL OPTIONS requests immediately
+// ABSOLUTE FIRST: Handle ALL OPTIONS requests immediately - BEFORE anything else
+app.use((req, res, next) => {
+  // Handle OPTIONS requests immediately
+  if (req.method === "OPTIONS") {
+    const origin = req.headers.origin;
+    console.log(`[CORS] OPTIONS request from: ${origin} to ${req.path}`);
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
+      res.setHeader("Access-Control-Max-Age", "86400");
+      console.log(`[CORS] ✅ Allowed OPTIONS for: ${origin}`);
+      return res.status(204).end();
+    } else {
+      console.log(`[CORS] ❌ Rejected OPTIONS for: ${origin}`);
+      // Still respond with 204 even if origin not allowed (to avoid browser errors)
+      return res.status(204).end();
+    }
+  }
+  next();
+});
+
+// Also handle with app.options as backup
 app.options("*", (req, res) => {
   const origin = req.headers.origin;
-  console.log(`[CORS] OPTIONS request from: ${origin}`);
+  console.log(`[CORS] app.options("*") handler - origin: ${origin}`);
   
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
@@ -32,9 +56,6 @@ app.options("*", (req, res) => {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
     res.setHeader("Access-Control-Max-Age", "86400");
-    console.log(`[CORS] Allowed OPTIONS for: ${origin}`);
-  } else {
-    console.log(`[CORS] Rejected OPTIONS for: ${origin}`);
   }
   
   return res.status(204).end();
