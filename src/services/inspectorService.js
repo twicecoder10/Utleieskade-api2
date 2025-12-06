@@ -45,18 +45,18 @@ const getInspectorDasboard = async (inspectorId) => {
     }) || 0;
 
     // Get prioritized cases (open cases with deadlines)
-    const prioritizedCases = await Case.findAll({
+    const prioritizedCasesRaw = await Case.findAll({
       where: {
         inspectorId,
         caseStatus: "open",
       },
       attributes: [
-        ["caseId", "caseId"],
-        ["caseDescription", "caseDescription"],
-        ["caseStatus", "status"],
-        ["caseDeadline", "deadline"],
-        ["caseUrgencyLevel", "urgency"],
-        ["createdAt", "createdAt"],
+        "caseId",
+        "caseDescription",
+        "caseStatus",
+        "caseDeadline",
+        "caseUrgencyLevel",
+        "createdAt",
       ],
       include: [
         {
@@ -73,6 +73,25 @@ const getInspectorDasboard = async (inspectorId) => {
       order: [["caseDeadline", "ASC NULLS LAST"]],
       limit: 10,
     }) || [];
+
+    // Transform cases to match frontend expectations
+    const prioritizedCases = prioritizedCasesRaw.map((caseItem) => {
+      const caseData = caseItem.get({ plain: true });
+      const tenant = caseData.tenant;
+      
+      return {
+        caseId: caseData.caseId,
+        caseDescription: caseData.caseDescription,
+        caseStatus: caseData.caseStatus,
+        caseDeadline: caseData.caseDeadline,
+        caseUrgencyLevel: caseData.caseUrgencyLevel,
+        createdAt: caseData.createdAt,
+        tenantName: tenant 
+          ? `${tenant.userFirstName || ""} ${tenant.userLastName || ""}`.trim()
+          : "N/A",
+        tenant: tenant || null,
+      };
+    });
 
     // Calculate total work hours and minutes from case timers
     // For now, return 0 if timer functionality doesn't exist
