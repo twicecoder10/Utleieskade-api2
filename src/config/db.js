@@ -90,8 +90,9 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
 };
 
 // Export a promise that resolves when connected
+// Never throw - always resolve/reject gracefully to prevent server crash
 const connectionPromise = connectWithRetry().catch((error) => {
-  console.error("Fatal database connection error:", error);
+  console.error("⚠️ Database connection error (non-fatal):", error.message);
   console.error("Full error details:", {
     message: error.message,
     code: error.code,
@@ -101,11 +102,8 @@ const connectionPromise = connectWithRetry().catch((error) => {
     user: dbUser,
     dialect: dbDialect,
   });
-  // Don't exit process in production, let the app handle it
-  if (!isProduction) {
-    process.exit(1);
-  }
-  throw error;
+  // Return a rejected promise but don't throw - let server.js handle it
+  return Promise.reject(error);
 });
 
 // Export sequelize for backward compatibility with models
