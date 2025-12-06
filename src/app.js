@@ -77,22 +77,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Additional CORS middleware using cors package (backup)
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
-  exposedHeaders: ["Content-Type", "Authorization"],
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-}));
+// Remove cors package - using manual headers only to avoid conflicts
+// The manual CORS handlers above should be sufficient
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
