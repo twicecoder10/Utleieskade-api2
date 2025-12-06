@@ -28,7 +28,7 @@ try {
   if (sequelize.connectionPromise) {
     sequelize.connectionPromise
       .then(() => {
-        console.log("✅ Database connection established");
+        console.log("✅ Database connection established Well");
       })
       .catch((error) => {
         console.error("⚠️ Database connection failed (server still running):", error?.message || error);
