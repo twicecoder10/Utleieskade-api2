@@ -193,6 +193,48 @@ exports.confirmPayment = async (req, res) => {
     });
 
     if (!property) {
+      // Ensure Property.propertyId column is VARCHAR before creating
+      // This is a safety check in case migration didn't run
+      try {
+        const sequelize = Property.sequelize;
+        const [columnInfo] = await sequelize.query(`
+          SELECT data_type, udt_name
+          FROM information_schema.columns 
+          WHERE table_schema = 'public'
+          AND table_name = 'Property' 
+          AND column_name = 'propertyId';
+        `);
+        
+        if (columnInfo.length > 0) {
+          const currentType = columnInfo[0].udt_name || columnInfo[0].data_type;
+          if (currentType === "uuid") {
+            console.log("⚠️  Property.propertyId is still UUID! Running emergency migration...");
+            // Drop foreign key
+            await sequelize.query(`
+              ALTER TABLE "Case" DROP CONSTRAINT IF EXISTS "Case_propertyId_fkey";
+            `);
+            // Convert column
+            await sequelize.query(`
+              ALTER TABLE "Property" 
+              ALTER COLUMN "propertyId" TYPE VARCHAR(255) 
+              USING "propertyId"::text;
+            `);
+            // Recreate foreign key
+            await sequelize.query(`
+              ALTER TABLE "Case" 
+              ADD CONSTRAINT "Case_propertyId_fkey" 
+              FOREIGN KEY ("propertyId") 
+              REFERENCES "Property"("propertyId") 
+              ON DELETE CASCADE;
+            `);
+            console.log("✅ Emergency migration completed!");
+          }
+        }
+      } catch (migrationError) {
+        console.error("⚠️  Emergency migration failed:", migrationError.message);
+        // Continue anyway - might work if column is already correct
+      }
+
       // Extract city from address or use default
       // Try to extract city from address (e.g., "123 Main St, Oslo" -> "Oslo")
       let propertyCity = "Oslo"; // Default city for Norway
