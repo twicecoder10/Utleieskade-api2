@@ -193,10 +193,34 @@ exports.confirmPayment = async (req, res) => {
     });
 
     if (!property) {
+      // Extract city from address or use default
+      // Try to extract city from address (e.g., "123 Main St, Oslo" -> "Oslo")
+      let propertyCity = "Oslo"; // Default city for Norway
+      if (caseData.propertyAddress) {
+        const addressParts = caseData.propertyAddress.split(",");
+        if (addressParts.length > 1) {
+          // Last part might be city
+          const potentialCity = addressParts[addressParts.length - 1].trim();
+          if (potentialCity && potentialCity.length > 0) {
+            propertyCity = potentialCity;
+          }
+        } else {
+          // If no comma, try to extract from end of string
+          const words = caseData.propertyAddress.trim().split(/\s+/);
+          if (words.length > 1) {
+            const potentialCity = words[words.length - 1];
+            if (potentialCity && potentialCity.length > 0) {
+              propertyCity = potentialCity;
+            }
+          }
+        }
+      }
+
       property = await Property.create({
         propertyId: generateUniqueId("PROP"),
         propertyAddress: caseData.propertyAddress,
         propertyType: "residential",
+        propertyCity: propertyCity || "Oslo", // Ensure city is always set (required field)
         propertyCountry: "Norway",
       });
     }
