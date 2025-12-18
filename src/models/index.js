@@ -30,6 +30,8 @@ const migratePropertyIdIfNeeded = async () => {
   try {
     const isPostgres = sequelize.getDialect() === "postgres";
     
+    console.log("🔍 Checking Property table schema...");
+    
     // Check if Property table exists
     const [results] = await sequelize.query(
       isPostgres
@@ -37,25 +39,27 @@ const migratePropertyIdIfNeeded = async () => {
             SELECT FROM information_schema.tables 
             WHERE table_schema = 'public' 
             AND table_name = 'Property'
-          );`
+          ) as exists;`
         : `SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_name = 'Property'
-          );`
+          ) as exists;`
     );
 
-    const tableExists = isPostgres ? results[0].exists : results[0]["EXISTS"];
+    const tableExists = isPostgres ? results[0].exists : results[0].exists;
 
     if (!tableExists) {
+      console.log("ℹ️  Property table does not exist. Will be created with correct type.");
       return; // Table doesn't exist, sync will create it with correct type
     }
 
     // Check current column type
     const [columnInfo] = await sequelize.query(
       isPostgres
-        ? `SELECT data_type 
+        ? `SELECT data_type, udt_name
            FROM information_schema.columns 
-           WHERE table_name = 'Property' 
+           WHERE table_schema = 'public'
+           AND table_name = 'Property' 
            AND column_name = 'propertyId';`
         : `SELECT DATA_TYPE 
            FROM information_schema.columns 
@@ -64,33 +68,63 @@ const migratePropertyIdIfNeeded = async () => {
     );
 
     if (columnInfo.length === 0) {
+      console.log("ℹ️  propertyId column does not exist. Will be created with correct type.");
       return; // Column doesn't exist
     }
 
     const currentType = isPostgres
-      ? columnInfo[0].data_type
+      ? (columnInfo[0].udt_name || columnInfo[0].data_type)
       : columnInfo[0].DATA_TYPE;
 
-    if (currentType === "uuid") {
+    console.log(`📊 Current propertyId type: ${currentType}`);
+
+    // Check for UUID type (PostgreSQL uses 'uuid' as udt_name, MySQL uses 'char')
+    if (currentType === "uuid" || (currentType === "character" && isPostgres)) {
       console.log("🔄 Migrating Property.propertyId from UUID to VARCHAR...");
       
       // Check if table has data
       const [rowCount] = await sequelize.query(
         isPostgres
-          ? `SELECT COUNT(*) as count FROM "Property";`
+          ? `SELECT COUNT(*)::int as count FROM "Property";`
           : `SELECT COUNT(*) as count FROM Property;`
       );
       const count = parseInt(isPostgres ? rowCount[0].count : rowCount[0].count);
 
+      console.log(`📊 Property table has ${count} rows`);
+
       if (count > 0) {
-        console.log(`⚠️  Property table has ${count} rows. Converting UUIDs to strings...`);
+        console.log(`⚠️  Converting ${count} existing UUIDs to strings...`);
         // Convert existing UUIDs to string format
         if (isPostgres) {
+          // First, drop any foreign key constraints that reference propertyId
+          try {
+            await sequelize.query(`
+              DO $$ 
+              DECLARE 
+                r RECORD;
+              BEGIN
+                FOR r IN (SELECT constraint_name, table_name 
+                          FROM information_schema.table_constraints 
+                          WHERE constraint_type = 'FOREIGN KEY' 
+                          AND constraint_schema = 'public'
+                          AND constraint_name LIKE '%propertyId%') 
+                LOOP
+                  EXECUTE 'ALTER TABLE "' || r.table_name || '" DROP CONSTRAINT IF EXISTS "' || r.constraint_name || '"';
+                END LOOP;
+              END $$;
+            `);
+            console.log("✅ Dropped foreign key constraints");
+          } catch (fkError) {
+            console.log("ℹ️  No foreign key constraints to drop or error:", fkError.message);
+          }
+
+          // Now alter the column type
           await sequelize.query(`
             ALTER TABLE "Property" 
             ALTER COLUMN "propertyId" TYPE VARCHAR(255) 
             USING "propertyId"::text;
           `);
+          console.log("✅ Column type changed to VARCHAR(255)");
         } else {
           await sequelize.query(`
             ALTER TABLE Property 
@@ -99,6 +133,7 @@ const migratePropertyIdIfNeeded = async () => {
         }
       } else {
         // No data, safe to alter
+        console.log("ℹ️  No existing data, converting column type...");
         if (isPostgres) {
           await sequelize.query(`
             ALTER TABLE "Property" 
@@ -110,12 +145,24 @@ const migratePropertyIdIfNeeded = async () => {
             MODIFY COLUMN propertyId VARCHAR(255) NOT NULL;
           `);
         }
+        console.log("✅ Column type changed to VARCHAR(255)");
       }
-      console.log("✅ Property.propertyId migration completed!");
+      console.log("✅ Property.propertyId migration completed successfully!");
+    } else {
+      console.log(`ℹ️  propertyId is already ${currentType}. No migration needed.`);
     }
   } catch (error) {
-    // Don't throw - migration failure shouldn't stop server
-    console.error("⚠️  Property migration error (non-fatal):", error.message);
+    // Log full error but don't throw - migration failure shouldn't stop server
+    console.error("❌ Property migration error:", error.message);
+    console.error("Error details:", {
+      name: error.name,
+      code: error.code,
+      sql: error.sql,
+    });
+    if (error.original) {
+      console.error("Original error:", error.original.message);
+    }
+    // Don't throw - let server continue
   }
 };
 
