@@ -53,7 +53,7 @@ const migratePropertyIdIfNeeded = async () => {
       return; // Table doesn't exist, sync will create it with correct type
     }
 
-    // Check current column type
+    // Check current column type - PostgreSQL uses udt_name for custom types like UUID
     const [columnInfo] = await sequelize.query(
       isPostgres
         ? `SELECT data_type, udt_name
@@ -72,14 +72,21 @@ const migratePropertyIdIfNeeded = async () => {
       return; // Column doesn't exist
     }
 
+    // For PostgreSQL, udt_name is the key field for UUID types
+    // data_type will be 'USER-DEFINED' for UUID, but udt_name will be 'uuid'
     const currentType = isPostgres
       ? (columnInfo[0].udt_name || columnInfo[0].data_type)
       : columnInfo[0].DATA_TYPE;
 
-    console.log(`📊 Current propertyId type: ${currentType}`);
+    console.log(`📊 Current propertyId type: ${currentType} (data_type: ${columnInfo[0].data_type || 'N/A'}, udt_name: ${columnInfo[0].udt_name || 'N/A'})`);
 
-    // Check for UUID type (PostgreSQL uses 'uuid' as udt_name, MySQL uses 'char')
-    if (currentType === "uuid" || (currentType === "character" && isPostgres)) {
+    // Check for UUID type - PostgreSQL uses 'uuid' as udt_name
+    // Also check data_type for 'USER-DEFINED' which indicates a custom type
+    const isUuidType = currentType === "uuid" || 
+                       (isPostgres && columnInfo[0].data_type === "USER-DEFINED" && columnInfo[0].udt_name === "uuid") ||
+                       (isPostgres && columnInfo[0].udt_name === "uuid");
+
+    if (isUuidType) {
       console.log("🔄 Migrating Property.propertyId from UUID to VARCHAR...");
       
       // Check if table has data
