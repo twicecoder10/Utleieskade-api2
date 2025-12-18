@@ -27,8 +27,15 @@ const PORT = process.env.PORT || 3000;
   // Check if connectionPromise exists before using it
   if (sequelize.connectionPromise) {
     sequelize.connectionPromise
-      .then(() => {
+      .then(async () => {
         console.log("✅ Database connection established");
+        // Run Property migration if needed (one-time fix for UUID to STRING)
+        try {
+          const { migratePropertyIdIfNeeded } = require("./src/models");
+          await migratePropertyIdIfNeeded();
+        } catch (migrationError) {
+          console.error("⚠️ Property migration error (non-fatal):", migrationError.message);
+        }
       })
       .catch((error) => {
         console.error("⚠️ Database connection failed (server still running):", error?.message || error);

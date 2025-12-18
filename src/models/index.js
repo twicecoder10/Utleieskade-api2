@@ -25,6 +25,100 @@ const UserExpertise = require("./UserExpertise");
 const AssessmentItem = require("./AssessmentItem");
 const AssessmentSummary = require("./AssessmentSummary");
 
+// Helper function to migrate Property.propertyId from UUID to STRING
+const migratePropertyIdIfNeeded = async () => {
+  try {
+    const isPostgres = sequelize.getDialect() === "postgres";
+    
+    // Check if Property table exists
+    const [results] = await sequelize.query(
+      isPostgres
+        ? `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = 'Property'
+          );`
+        : `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'Property'
+          );`
+    );
+
+    const tableExists = isPostgres ? results[0].exists : results[0]["EXISTS"];
+
+    if (!tableExists) {
+      return; // Table doesn't exist, sync will create it with correct type
+    }
+
+    // Check current column type
+    const [columnInfo] = await sequelize.query(
+      isPostgres
+        ? `SELECT data_type 
+           FROM information_schema.columns 
+           WHERE table_name = 'Property' 
+           AND column_name = 'propertyId';`
+        : `SELECT DATA_TYPE 
+           FROM information_schema.columns 
+           WHERE table_name = 'Property' 
+           AND column_name = 'propertyId';`
+    );
+
+    if (columnInfo.length === 0) {
+      return; // Column doesn't exist
+    }
+
+    const currentType = isPostgres
+      ? columnInfo[0].data_type
+      : columnInfo[0].DATA_TYPE;
+
+    if (currentType === "uuid") {
+      console.log("🔄 Migrating Property.propertyId from UUID to VARCHAR...");
+      
+      // Check if table has data
+      const [rowCount] = await sequelize.query(
+        isPostgres
+          ? `SELECT COUNT(*) as count FROM "Property";`
+          : `SELECT COUNT(*) as count FROM Property;`
+      );
+      const count = parseInt(isPostgres ? rowCount[0].count : rowCount[0].count);
+
+      if (count > 0) {
+        console.log(`⚠️  Property table has ${count} rows. Converting UUIDs to strings...`);
+        // Convert existing UUIDs to string format
+        if (isPostgres) {
+          await sequelize.query(`
+            ALTER TABLE "Property" 
+            ALTER COLUMN "propertyId" TYPE VARCHAR(255) 
+            USING "propertyId"::text;
+          `);
+        } else {
+          await sequelize.query(`
+            ALTER TABLE Property 
+            MODIFY COLUMN propertyId VARCHAR(255) NOT NULL;
+          `);
+        }
+      } else {
+        // No data, safe to alter
+        if (isPostgres) {
+          await sequelize.query(`
+            ALTER TABLE "Property" 
+            ALTER COLUMN "propertyId" TYPE VARCHAR(255);
+          `);
+        } else {
+          await sequelize.query(`
+            ALTER TABLE Property 
+            MODIFY COLUMN propertyId VARCHAR(255) NOT NULL;
+          `);
+        }
+      }
+      console.log("✅ Property.propertyId migration completed!");
+    }
+  } catch (error) {
+    // Don't throw - migration failure shouldn't stop server
+    console.error("⚠️  Property migration error (non-fatal):", error.message);
+  }
+};
+
 const syncDatabase = async (force = false) => {
   try {
     if (force) {
@@ -33,10 +127,16 @@ const syncDatabase = async (force = false) => {
       console.log("✅ All tables dropped successfully.");
     }
     await sequelize.sync({ alter: true, force });
+    
+    // Run Property migration if needed (one-time fix for UUID to STRING)
+    await migratePropertyIdIfNeeded();
   } catch (err) {
     throw err;
   }
 };
+
+// Export migration function for use in server.js
+module.exports.migratePropertyIdIfNeeded = migratePropertyIdIfNeeded;
 
 User.hasMany(Case, { foreignKey: "userId" });
 User.hasMany(Case, { foreignKey: "inspectorId", as: "inspectedCases" });
