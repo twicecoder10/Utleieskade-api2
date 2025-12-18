@@ -198,6 +198,64 @@ const migratePropertyIdIfNeeded = async () => {
     } else {
       console.log(`ℹ️  propertyId is already ${currentType}. No migration needed.`);
     }
+
+    // Also migrate Case.propertyId from UUID to VARCHAR if needed
+    console.log("🔍 Checking Case.propertyId column type...");
+    const [caseColumnInfo] = await sequelize.query(
+      isPostgres
+        ? `SELECT data_type, udt_name
+           FROM information_schema.columns 
+           WHERE table_schema = 'public'
+           AND table_name = 'Case' 
+           AND column_name = 'propertyId';`
+        : `SELECT DATA_TYPE 
+           FROM information_schema.columns 
+           WHERE table_name = 'Case' 
+           AND column_name = 'propertyId';`
+    );
+
+    if (caseColumnInfo.length > 0) {
+      const caseCurrentType = isPostgres
+        ? (caseColumnInfo[0].udt_name || caseColumnInfo[0].data_type)
+        : caseColumnInfo[0].DATA_TYPE;
+
+      console.log(`📊 Current Case.propertyId type: ${caseCurrentType}`);
+
+      const isCaseUuidType = caseCurrentType === "uuid" || 
+                             (isPostgres && caseColumnInfo[0].data_type === "USER-DEFINED" && caseColumnInfo[0].udt_name === "uuid") ||
+                             (isPostgres && caseColumnInfo[0].udt_name === "uuid");
+
+      if (isCaseUuidType) {
+        console.log("🔄 Migrating Case.propertyId from UUID to VARCHAR...");
+        
+        // Drop foreign key constraint first
+        await sequelize.query(`
+          ALTER TABLE "Case" DROP CONSTRAINT IF EXISTS "Case_propertyId_fkey";
+        `);
+        console.log("✅ Dropped Case.propertyId foreign key constraint");
+
+        // Convert column type
+        await sequelize.query(`
+          ALTER TABLE "Case" 
+          ALTER COLUMN "propertyId" TYPE VARCHAR(255) 
+          USING "propertyId"::text;
+        `);
+        console.log("✅ Case.propertyId column type converted to VARCHAR(255)");
+
+        // Recreate foreign key constraint
+        await sequelize.query(`
+          ALTER TABLE "Case" 
+          ADD CONSTRAINT "Case_propertyId_fkey" 
+          FOREIGN KEY ("propertyId") 
+          REFERENCES "Property"("propertyId") 
+          ON DELETE CASCADE;
+        `);
+        console.log("✅ Case.propertyId foreign key constraint recreated");
+        console.log("✅ Case.propertyId migration completed successfully!");
+      } else {
+        console.log(`ℹ️  Case.propertyId is already ${caseCurrentType}. No migration needed.`);
+      }
+    }
   } catch (error) {
     // Log full error but don't throw - migration failure shouldn't stop server
     console.error("❌ Property migration error:", error.message);

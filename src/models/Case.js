@@ -12,7 +12,7 @@ const Case = sequelize.define(
     caseDeadline: { type: DataTypes.DATE, allowNull: true },
     userId: { type: DataTypes.STRING, allowNull: false },
     inspectorId: { type: DataTypes.STRING, allowNull: true },
-    propertyId: { type: DataTypes.UUID, allowNull: false },
+    propertyId: { type: DataTypes.STRING, allowNull: false },
     buildingNumber: { type: DataTypes.STRING, allowNull: true },
     caseStatus: {
       type: DataTypes.ENUM(
