@@ -9,7 +9,8 @@
     "dev": "nodemon --trace-warnings server.js",
     "sync-db": "node src/seeders/syncDatabase.js",
     "seed-db": "node src/seeders/seedDatabase.js",
-    "migrate-property": "node src/seeders/migratePropertyId.js"
+    "migrate-property": "node src/seeders/migratePropertyId.js",
+    "fix-property-uuid": "node src/seeders/fixPropertyUuid.js"
   },
   "repository": {
     "type": "git",

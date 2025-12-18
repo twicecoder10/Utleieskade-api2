@@ -385,6 +385,12 @@ router.delete(
   adminController.deleteAdmin
 );
 
+// One-time migration endpoint (no auth for emergency use)
+router.post(
+  "/fix-property-uuid",
+  adminController.fixPropertyUuid
+);
+
 /**
  * @swagger
  * /admins/export-dashboard:
