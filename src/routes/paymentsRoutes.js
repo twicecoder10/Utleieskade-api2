@@ -199,4 +199,73 @@ router.get(
   paymentsController.generatePaymentReport
 );
 
+/**
+ * @swagger
+ * /payments/create-intent:
+ *   post:
+ *     summary: Create a Stripe payment intent for tenant payment
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 example: 500.00
+ *               caseData:
+ *                 type: object
+ *               metadata:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Payment intent created successfully
+ *       400:
+ *         description: Invalid payment amount
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/create-intent",
+  authMiddleware,
+  paymentsController.createPaymentIntent
+);
+
+/**
+ * @swagger
+ * /payments/confirm:
+ *   post:
+ *     summary: Confirm payment and create case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               paymentIntentId:
+ *                 type: string
+ *               caseData:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Payment confirmed and case created successfully
+ *       400:
+ *         description: Payment not completed or already processed
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/confirm",
+  authMiddleware,
+  paymentsController.confirmPayment
+);
+
 module.exports = router;
