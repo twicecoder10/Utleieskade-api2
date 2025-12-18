@@ -1,22 +1,47 @@
 const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log("Created uploads directory");
+}
 
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    // Ensure directory exists before saving
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
     cb(
       null,
-      new Date().toISOString().replace(/:/g, "-") + "-" + file.originalname
+      `${name}-${uniqueSuffix}${ext}`
     );
   },
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
+  // Allow common image types
+  const allowedMimes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ];
+  
+  if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(null, false);
+    cb(new Error(`Invalid file type. Only ${allowedMimes.join(", ")} are allowed.`), false);
   }
 };
 
