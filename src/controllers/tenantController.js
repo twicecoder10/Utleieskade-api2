@@ -186,6 +186,15 @@ exports.deactivateTenant = async (req, res) => {
 
 exports.getCases = async (req, res) => {
   try {
+    // Run migration check before query to prevent UUID/STRING errors
+    try {
+      const { migrateAllUuidMismatches } = require("../models");
+      await migrateAllUuidMismatches();
+    } catch (migrationError) {
+      console.error("⚠️ Migration check failed (non-fatal):", migrationError.message);
+      // Continue with query anyway
+    }
+
     const { search, status, urgency, page, limit } = req.query;
 
     const filters = {
