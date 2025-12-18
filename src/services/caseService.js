@@ -71,13 +71,22 @@ const createCase = async (caseData) => {
     });
 
     if (damage.photos && damage.photos.length > 0) {
-      const damagePhotos = damage.photos.map((photo) => ({
-        damageId: createdDamage.damageId,
-        photoType: photo.photoType,
-        photoUrl: photo.photoUrl,
-      }));
+      // Filter out photos with invalid or missing photoUrl
+      const validPhotos = damage.photos.filter((photo) => {
+        return photo && photo.photoUrl && typeof photo.photoUrl === 'string' && photo.photoUrl.trim().length > 0;
+      });
 
-      await DamagePhoto.bulkCreate(damagePhotos);
+      if (validPhotos.length > 0) {
+        const damagePhotos = validPhotos.map((photo) => ({
+          damageId: createdDamage.damageId,
+          photoType: photo.photoType || 'general', // Default photoType if not provided
+          photoUrl: photo.photoUrl.trim(), // Ensure no whitespace
+        }));
+
+        await DamagePhoto.bulkCreate(damagePhotos);
+      } else {
+        console.warn(`No valid photos found for damage ${createdDamage.damageId}, skipping photo creation`);
+      }
     }
   }
 
