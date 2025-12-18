@@ -75,22 +75,23 @@ exports.uploadFile = async (req, res) => {
 
 exports.getFile = async (req, res) => {
   try {
-    const filePath = req.params.filePath;
+    let filePath = req.params.filePath;
 
-    // Check if it's an Azure Blob URL
+    // Decode URL-encoded file path
+    filePath = decodeURIComponent(filePath);
+
+    // Check if it's an Azure Blob URL (full URL)
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      // If Azure is configured, try to get from Azure
-      if (isAzureConfigured()) {
-        try {
-          const { getFileFromAzure } = require("../utils/azureStorage");
-          const fileStream = await getFileFromAzure(filePath);
-          fileStream.pipe(res);
-          return;
-        } catch (azureError) {
-          console.error("Error fetching from Azure:", azureError.message);
-          // Fall through to try local file
-        }
-      }
+      // For Azure Blob URLs, redirect to the Azure URL directly
+      // Azure Blob Storage URLs are publicly accessible if container is set to 'blob' access
+      return res.redirect(filePath);
+    }
+
+    // Check if it's a relative path that might be an Azure URL (starts with blob.core.windows.net)
+    if (filePath.includes('blob.core.windows.net')) {
+      // Construct full Azure URL
+      const azureUrl = filePath.startsWith('http') ? filePath : `https://${filePath}`;
+      return res.redirect(azureUrl);
     }
 
     // Fallback to local file system

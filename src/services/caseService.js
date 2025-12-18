@@ -9,6 +9,7 @@ const {
   Report,
   AssessmentItem,
   AssessmentSummary,
+  Payment,
 } = require("../models/index");
 const { Op } = require("sequelize");
 const { generateUniqueId } = require("../utils/uniqueIdGenerator");
@@ -124,6 +125,7 @@ const getAllCases = async ({
       ["caseDescription", "caseDescription"],
       ["caseStatus", "status"],
       ["caseUrgencyLevel", "urgencyLevel"],
+      "createdAt",
     ],
     include: [
       {
@@ -139,6 +141,11 @@ const getAllCases = async ({
           "userFirstName",
           "userLastName",
         ],
+        required: false,
+      },
+      {
+        model: Payment,
+        attributes: ["paymentId", "paymentAmount", "paymentDate", "paymentStatus"],
         required: false,
       },
     ],
@@ -198,13 +205,22 @@ const getCaseDetails = async (caseId) => {
       {
         model: Damage,
         as: "damages",
+        attributes: [
+          "damageId",
+          "damageLocation",
+          "damageType",
+          "damageDescription",
+          "damageDate",
+        ],
         include: [
           {
             model: DamagePhoto,
             as: "damagePhotos",
+            attributes: ["photoId", "photoUrl", "photoType"],
             required: false,
           },
         ],
+        required: false,
       },
       {
         model: CaseTimeline,
