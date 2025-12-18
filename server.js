@@ -3,6 +3,14 @@ dotenv.config();
 
 // Try to start server with error handling
 try {
+  // Initialize Azure Blob Storage if configured
+  try {
+    const { initializeAzureStorage } = require("./src/utils/azureStorage");
+    initializeAzureStorage();
+  } catch (azureError) {
+    console.warn("⚠️  Azure storage initialization skipped:", azureError.message);
+  }
+
   const appSetup = require("./src/app");
   const sequelize = require("./src/config/db");
 

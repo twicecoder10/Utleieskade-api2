@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const responseHandler = require("../utils/responseHandler");
+const { uploadToAzure, isAzureConfigured } = require("../utils/azureStorage");
 
 exports.uploadFile = async (req, res) => {
   if (!req.file) {
@@ -10,24 +11,44 @@ exports.uploadFile = async (req, res) => {
   }
 
   try {
-    // Check if file was actually saved
-    if (!fs.existsSync(req.file.path)) {
-      console.error("Upload error: File not saved to disk", req.file.path);
-      responseHandler.setError(500, "File upload failed. File was not saved.");
-      return responseHandler.send(res);
-    }
+    let fileUrl;
 
-    // Get relative path from uploads directory
-    const uploadsDir = path.join(process.cwd(), "uploads");
-    const relativeFilePath = path.relative(uploadsDir, req.file.path).replace(/\\/g, "/");
-    
-    const fileUrl = `${process.env.API_BASE_URL || process.env.UTLEIESKADE_BASE_URL || ""}/files/${relativeFilePath}`;
+    // Check if Azure storage is configured
+    if (isAzureConfigured()) {
+      // Upload to Azure Blob Storage
+      const fileBuffer = fs.readFileSync(req.file.path);
+      fileUrl = await uploadToAzure(
+        fileBuffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      // Delete local file after uploading to Azure
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (deleteError) {
+        console.warn("⚠️  Could not delete local file after Azure upload:", deleteError.message);
+      }
+    } else {
+      // Fallback to local storage if Azure not configured
+      if (!fs.existsSync(req.file.path)) {
+        console.error("Upload error: File not saved to disk", req.file.path);
+        responseHandler.setError(500, "File upload failed. File was not saved.");
+        return responseHandler.send(res);
+      }
+
+      // Get relative path from uploads directory
+      const uploadsDir = path.join(process.cwd(), "uploads");
+      const relativeFilePath = path.relative(uploadsDir, req.file.path).replace(/\\/g, "/");
+      
+      fileUrl = `${process.env.API_BASE_URL || process.env.UTLEIESKADE_BASE_URL || ""}/files/${relativeFilePath}`;
+    }
     
     console.log("File uploaded successfully:", {
       originalName: req.file.originalname,
-      savedPath: req.file.path,
       fileUrl: fileUrl,
       size: req.file.size,
+      storage: isAzureConfigured() ? "Azure Blob Storage" : "Local",
     });
 
     responseHandler.setSuccess(201, {
@@ -44,6 +65,24 @@ exports.uploadFile = async (req, res) => {
 exports.getFile = async (req, res) => {
   try {
     const filePath = req.params.filePath;
+
+    // Check if it's an Azure Blob URL
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      // If Azure is configured, try to get from Azure
+      if (isAzureConfigured()) {
+        try {
+          const { getFileFromAzure } = require("../utils/azureStorage");
+          const fileStream = await getFileFromAzure(filePath);
+          fileStream.pipe(res);
+          return;
+        } catch (azureError) {
+          console.error("Error fetching from Azure:", azureError.message);
+          // Fall through to try local file
+        }
+      }
+    }
+
+    // Fallback to local file system
     const absolutePath = path.resolve(`uploads/${filePath}`);
 
     if (!fs.existsSync(absolutePath)) {
