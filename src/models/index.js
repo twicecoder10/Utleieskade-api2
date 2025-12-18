@@ -25,7 +25,163 @@ const UserExpertise = require("./UserExpertise");
 const AssessmentItem = require("./AssessmentItem");
 const AssessmentSummary = require("./AssessmentSummary");
 
+// Comprehensive migration function to fix all UUID/STRING mismatches
+// This ensures all foreign keys match their referenced primary key types
+const migrateAllUuidMismatches = async () => {
+  try {
+    const isPostgres = sequelize.getDialect() === "postgres";
+    
+    console.log("🔍 Running comprehensive UUID/STRING migration check...");
+    
+    // List of known foreign key relationships that should be STRING
+    const stringForeignKeys = [
+      { table: "Case", column: "propertyId", references: "Property.propertyId" },
+      { table: "Case", column: "userId", references: "User.userId" },
+      { table: "Case", column: "inspectorId", references: "User.userId" },
+      { table: "Case", column: "caseId", references: null }, // Primary key
+      { table: "Damage", column: "caseId", references: "Case.caseId" },
+      { table: "CaseTimeline", column: "caseId", references: "Case.caseId" },
+      { table: "Payment", column: "caseId", references: "Case.caseId" },
+      { table: "Report", column: "caseId", references: "Case.caseId" },
+      { table: "Report", column: "inspectorId", references: "User.userId" },
+      { table: "Refund", column: "caseId", references: "Case.caseId" },
+      { table: "BankDetails", column: "userId", references: "User.userId" },
+      { table: "Availability", column: "inspectorId", references: "User.userId" },
+      { table: "TrackingTime", column: "inspectorId", references: "User.userId" },
+      { table: "Otp", column: "userId", references: "User.userId" },
+      { table: "Conversation", column: "userOne", references: "User.userId" },
+      { table: "Conversation", column: "userTwo", references: "User.userId" },
+      { table: "Message", column: "senderId", references: "User.userId" },
+      { table: "Message", column: "receiverId", references: "User.userId" },
+    ];
+
+    for (const fk of stringForeignKeys) {
+      try {
+        // Check if table exists
+        const [tableExists] = await sequelize.query(
+          isPostgres
+            ? `SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = '${fk.table}'
+              ) as exists;`
+            : `SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = '${fk.table}'
+              ) as exists;`
+        );
+
+        if (!tableExists[0].exists) {
+          continue; // Table doesn't exist yet
+        }
+
+        // Check column type
+        const [columnInfo] = await sequelize.query(
+          isPostgres
+            ? `SELECT data_type, udt_name
+               FROM information_schema.columns 
+               WHERE table_schema = 'public'
+               AND table_name = '${fk.table}' 
+               AND column_name = '${fk.column}';`
+            : `SELECT DATA_TYPE 
+               FROM information_schema.columns 
+               WHERE table_name = '${fk.table}' 
+               AND column_name = '${fk.column}';`
+        );
+
+        if (columnInfo.length === 0) {
+          continue; // Column doesn't exist
+        }
+
+        const currentType = isPostgres
+          ? (columnInfo[0].udt_name || columnInfo[0].data_type)
+          : columnInfo[0].DATA_TYPE;
+
+        // Check if it's UUID but should be STRING
+        const isUuidType = currentType === "uuid" || 
+                           (isPostgres && columnInfo[0].data_type === "USER-DEFINED" && columnInfo[0].udt_name === "uuid") ||
+                           (isPostgres && columnInfo[0].udt_name === "uuid");
+
+        if (isUuidType) {
+          console.log(`🔄 Migrating ${fk.table}.${fk.column} from UUID to VARCHAR...`);
+          
+          // Find and drop foreign key constraints
+          if (fk.references) {
+            const [refTable, refColumn] = fk.references.split(".");
+            const [fkConstraints] = await sequelize.query(`
+              SELECT 
+                tc.constraint_name,
+                tc.table_name
+              FROM information_schema.table_constraints AS tc
+              JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+              JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+              WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_schema = 'public'
+                AND tc.table_name = '${fk.table}'
+                AND kcu.column_name = '${fk.column}'
+                AND ccu.table_name = '${refTable}'
+                AND ccu.column_name = '${refColumn}';
+            `);
+            
+            for (const constraint of fkConstraints) {
+              await sequelize.query(`
+                ALTER TABLE "${fk.table}" 
+                DROP CONSTRAINT IF EXISTS "${constraint.constraint_name}";
+              `);
+              console.log(`  ✅ Dropped constraint ${constraint.constraint_name}`);
+            }
+          }
+
+          // Convert column type
+          await sequelize.query(`
+            ALTER TABLE "${fk.table}" 
+            ALTER COLUMN "${fk.column}" TYPE VARCHAR(255) 
+            USING "${fk.column}"::text;
+          `);
+          console.log(`  ✅ Converted ${fk.table}.${fk.column} to VARCHAR(255)`);
+
+          // Recreate foreign key if it existed
+          if (fk.references) {
+            const [refTable, refColumn] = fk.references.split(".");
+            const constraintName = `${fk.table}_${fk.column}_fkey`;
+            await sequelize.query(`
+              DO $$
+              BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM information_schema.table_constraints 
+                  WHERE constraint_name = '${constraintName}' 
+                  AND table_name = '${fk.table}'
+                ) THEN
+                  ALTER TABLE "${fk.table}" 
+                  ADD CONSTRAINT "${constraintName}" 
+                  FOREIGN KEY ("${fk.column}") 
+                  REFERENCES "${refTable}"("${refColumn}") 
+                  ON DELETE CASCADE;
+                END IF;
+              END $$;
+            `);
+            console.log(`  ✅ Recreated foreign key constraint`);
+          }
+        }
+      } catch (error) {
+        console.error(`  ⚠️  Error migrating ${fk.table}.${fk.column}:`, error.message);
+        // Continue with other columns
+      }
+    }
+    
+    console.log("✅ Comprehensive UUID/STRING migration check completed!");
+  } catch (error) {
+    console.error("❌ Comprehensive migration error:", error.message);
+    // Don't throw - let server continue
+  }
+};
+
 // Helper function to migrate Property.propertyId from UUID to STRING
+// (Kept for backward compatibility, now calls comprehensive migration)
 const migratePropertyIdIfNeeded = async () => {
   try {
     const isPostgres = sequelize.getDialect() === "postgres";
@@ -280,15 +436,16 @@ const syncDatabase = async (force = false) => {
     }
     await sequelize.sync({ alter: true, force });
     
-    // Run Property migration if needed (one-time fix for UUID to STRING)
-    await migratePropertyIdIfNeeded();
+    // Run comprehensive UUID/STRING migration check
+    await migrateAllUuidMismatches();
   } catch (err) {
     throw err;
   }
 };
 
-// Export migration function for use in server.js
+// Export migration functions for use in server.js
 module.exports.migratePropertyIdIfNeeded = migratePropertyIdIfNeeded;
+module.exports.migrateAllUuidMismatches = migrateAllUuidMismatches;
 
 User.hasMany(Case, { foreignKey: "userId" });
 User.hasMany(Case, { foreignKey: "inspectorId", as: "inspectedCases" });

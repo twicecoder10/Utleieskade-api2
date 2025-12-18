@@ -29,12 +29,12 @@ const PORT = process.env.PORT || 3000;
     sequelize.connectionPromise
       .then(async () => {
         console.log("✅ Database connection established");
-        // Run Property migration if needed (one-time fix for UUID to STRING)
+        // Run comprehensive UUID/STRING migration check
         try {
-          const { migratePropertyIdIfNeeded } = require("./src/models");
-          await migratePropertyIdIfNeeded();
+          const { migrateAllUuidMismatches } = require("./src/models");
+          await migrateAllUuidMismatches();
         } catch (migrationError) {
-          console.error("⚠️ Property migration error (non-fatal):", migrationError.message);
+          console.error("⚠️ UUID migration error (non-fatal):", migrationError.message);
         }
       })
       .catch((error) => {
