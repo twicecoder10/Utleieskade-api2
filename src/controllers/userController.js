@@ -193,78 +193,108 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// exports.sendPasswordResetEmail = async (req, res) => {
-//   try {
-//     if (!req.body.userEmail) {
-//       responseHandler.setError(400, "Email is required!");
-//       return responseHandler.send(res);
-//     }
-//     const user = await userService.fetchUserByEmail(
-//       req.body.userEmail.trim().toLowerCase()
-//     );
-//     if (!user) {
-//       responseHandler.setError(400, "User with the email does not exist");
-//       return responseHandler.send(res);
-//     }
+const OtpService = require("../services/otpService");
 
-//     const token = generateToken(user.userId, "30m");
+exports.sendPasswordResetEmail = async (req, res) => {
+  try {
+    if (!req.body.userEmail) {
+      responseHandler.setError(400, "Email is required!");
+      return responseHandler.send(res);
+    }
+    const user = await userService.fetchUserByEmail(
+      req.body.userEmail.trim().toLowerCase()
+    );
+    if (!user) {
+      responseHandler.setError(400, "User with the email does not exist");
+      return responseHandler.send(res);
+    }
 
-//     await userService.updateUser(user.userId, {
-//       token: token,
-//     });
+    // Use OTP service to send password reset OTP
+    const otpResponse = await OtpService.generateOtp(
+      user.userId,
+      user.userEmail
+    );
 
-//     const url = `${process.env.API_BASE_URL}/users/verify-password-reset-link?token=${token}`;
-//     const text = emailTemplate(
-//       "UTLEIESKADE PASSWORD RESET CONFIRMATION",
-//       `<div style="text-align: left; font-family: Arial, sans-serif;">
-//           Dear user,<p>Please find below your password reset link based on your recent password reset request.
-//           <br>If you did not request for this password change, Kindly <b>IGNORE</b> this email
-//           <p><a href="${url}"><button style= "background-color: rgb(78, 157, 230); border-radius: 3px; color: white;
-//               border: none; padding: 10px; cursor: pointer;">Reset Password</button></a>
-//           </p><br>
-//           </div>`
-//     );
-//     await sendEmail(user.userEmail, "Password Reset", text);
+    // Check if OTP was already sent (rate limiting)
+    if (otpResponse.statusCode === 200 && otpResponse.message?.includes("already been sent")) {
+      responseHandler.setSuccess(200, otpResponse.message);
+      return responseHandler.send(res);
+    }
 
-//     responseHandler.setSuccess(200, `Email sent to ${user.userEmail}`);
-//     return responseHandler.send(res);
-//   } catch (error) {
-//     console.error(error);
-//     responseHandler.setError(
-//       500,
-//       "Password reset email can't be sent at the moment... Please retry later."
-//     );
-//     return responseHandler.send(res);
-//   }
-// };
+    responseHandler.setSuccess(200, otpResponse.message || `OTP sent to ${user.userEmail}`);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Password reset email error:", error);
+    console.error("Error stack:", error.stack);
+    
+    // Provide more specific error messages
+    let errorMessage = "Password reset email can't be sent at the moment... Please retry later.";
+    if (error.message?.includes("Email service is not configured")) {
+      errorMessage = "Email service is not configured. Please contact support.";
+    } else if (error.message?.includes("Email server connection failed")) {
+      errorMessage = "Email server connection failed. Please check email configuration.";
+    } else if (error.message?.includes("Email authentication failed")) {
+      errorMessage = "Email authentication failed. Please check email credentials.";
+    } else if (error.message?.includes("Email failed to send")) {
+      errorMessage = "Failed to send email. Please check email configuration.";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    responseHandler.setError(500, errorMessage);
+    return responseHandler.send(res);
+  }
+};
 
-// exports.verifyPasswordReset = async (req, res) => {
-//   try {
-//     const token = req.query.token;
-//     if (!token) {
-//       responseHandler.setError(400, "No token provided.");
-//       return responseHandler.send(res);
-//     }
-//     const verification = await verifyToken(token);
-//     if (verification.status == false) {
-//       responseHandler.setError(401, verification.message);
-//       return responseHandler.send(res);
-//     }
-//     if (token) {
-//       const userId = verification.message.id;
-//       await userService.updateUser(userId, {
-//         token: null,
-//         userPassword: "default",
-//       });
-//       res.redirect(
-//         `${process.env.UTLEIESKADE_BASE_URL}/Reset-password/?token=${token}`
-//       );
-//     }
-//   } catch (error) {
-//     responseHandler.setError(500, "Internal Server Error. Please retry later");
-//     return responseHandler.send(res);
-//   }
-// };
+exports.verifyPasswordReset = async (req, res) => {
+  try {
+    // Support both query param and body for token (OTP code)
+    const token = req.query.token || req.body.token;
+    const userEmail = req.body.userEmail;
+    
+    if (!token) {
+      responseHandler.setError(400, "OTP code is required.");
+      return responseHandler.send(res);
+    }
+
+    if (!userEmail) {
+      responseHandler.setError(400, "Email is required.");
+      return responseHandler.send(res);
+    }
+
+    const user = await userService.fetchUserByEmail(userEmail.trim().toLowerCase());
+    if (!user) {
+      responseHandler.setError(404, "User not found.");
+      return responseHandler.send(res);
+    }
+
+    // Verify OTP using OTP service
+    const otpResponse = await OtpService.validateOtp(user.userId, token);
+
+    if (otpResponse.statusCode === 200) {
+      // Generate a password reset token (valid for 30 minutes)
+      const resetToken = generateToken(user.userId, "30m");
+
+      // Set user password to "default" and store the reset token
+      await userService.updateUser(user.userId, {
+        userPassword: "default",
+        token: resetToken,
+      });
+
+      responseHandler.setSuccess(200, "OTP verified successfully. You can now reset your password.", {
+        token: resetToken,
+      });
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setError(otpResponse.statusCode || 400, otpResponse.message || "Invalid or expired OTP.");
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error(error);
+    responseHandler.setError(500, "Internal Server Error. Please retry later");
+    return responseHandler.send(res);
+  }
+};
 
 exports.updatePassword = async (req, res) => {
   try {
@@ -272,7 +302,9 @@ exports.updatePassword = async (req, res) => {
       responseHandler.setError(400, "Password is required!");
       return responseHandler.send(res);
     }
-    const token = req.query.token;
+    
+    // Support both query param and body for token
+    const token = req.query.token || req.body.token;
 
     if (!token) {
       responseHandler.setError(404, "No token provided");
