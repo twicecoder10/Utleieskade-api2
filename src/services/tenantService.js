@@ -271,37 +271,51 @@ const getTenantCases = async (
       ["caseStatus", "status"],
       ["caseUrgencyLevel", "urgency"],
       ["createdAt", "reportedDate"],
+      [
+        Sequelize.literal(`(
+          SELECT COUNT(DISTINCT "damages"."damageId")
+          FROM "Damage" AS "damages"
+          WHERE "damages"."caseId" = "Case"."caseId"
+        )`),
+        "numDamages",
+      ],
+      [
+        Sequelize.literal(`(
+          SELECT COUNT("damagePhotos"."photoId")
+          FROM "Damage" AS "damages"
+          LEFT OUTER JOIN "DamagePhoto" AS "damagePhotos" ON "damages"."damageId" = "damagePhotos"."damageId"
+          WHERE "damages"."caseId" = "Case"."caseId"
+        )`),
+        "numPhotos",
+      ],
     ],
     include: [
       {
         model: Property,
         as: "property",
-        attributes: ["propertyAddress"],
+        attributes: ["propertyId", "propertyAddress"],
+        required: false,
       },
       {
         model: Damage,
         as: "damages",
-        attributes: [
-          [
-            Sequelize.fn("COUNT", Sequelize.col("damages.damageId")),
-            "numPhotos",
-          ],
-          "damageLocation",
-        ],
+        attributes: ["damageId", "damageLocation"],
         include: [
           {
             model: DamagePhoto,
             as: "damagePhotos",
-            attributes: [],
+            attributes: ["photoId"],
+            required: false,
           },
         ],
+        required: false,
+        separate: true, // Load damages separately to avoid GROUP BY issues
       },
     ],
-    group: ["Case.caseId"],
     limit: parseInt(limit),
     offset,
     order: [["createdAt", "DESC"]],
-    subQuery: false,
+    distinct: true, // Important for PostgreSQL when using includes with count
   });
 
   return {
