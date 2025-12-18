@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const { generateToken } = require("../utils/generateToken");
 const { verifyToken } = require("../utils/verifyToken");
 const { generateUniqueId } = require("../utils/uniqueIdGenerator");
+const OtpService = require("../services/otpService");
 
 exports.createUser = async (req, res) => {
   try {
@@ -37,8 +38,17 @@ exports.createUser = async (req, res) => {
 
     const newUser = await userService.createUser(userData);
 
+    // Send OTP email for email verification
+    try {
+      await OtpService.generateOtp(newUser.userId, newUser.userEmail);
+      console.log(`OTP email sent to ${newUser.userEmail} after signup`);
+    } catch (emailError) {
+      // Log error but don't fail signup - user can request OTP later
+      console.error(`Failed to send OTP email after signup to ${newUser.userEmail}:`, emailError.message);
+    }
+
     const token = generateToken(newUser.userId, "7d", newUser.userType);
-    responseHandler.setSuccess(201, "User created successfully", {
+    responseHandler.setSuccess(201, "User created successfully. Please check your email for verification code.", {
       token,
       userType: newUser.userType,
       isVerified: newUser.isVerified,
@@ -218,8 +228,6 @@ exports.updateUser = async (req, res) => {
     return responseHandler.send(res);
   }
 };
-
-const OtpService = require("../services/otpService");
 
 exports.sendPasswordResetEmail = async (req, res) => {
   try {
