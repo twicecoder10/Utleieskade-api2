@@ -24,6 +24,18 @@ const createCase = async (caseData) => {
     caseDeadline,
   } = caseData;
 
+  // Validate and parse caseDeadline if provided
+  let validatedDeadline = null;
+  if (caseDeadline) {
+    const parsedDeadline = new Date(caseDeadline);
+    if (!isNaN(parsedDeadline.getTime())) {
+      validatedDeadline = parsedDeadline;
+    } else {
+      console.warn(`Invalid caseDeadline provided: ${caseDeadline}, setting to null`);
+      validatedDeadline = null;
+    }
+  }
+
   const newCase = await Case.create({
     caseId: generateUniqueId("CASE"),
     userId,
@@ -31,16 +43,31 @@ const createCase = async (caseData) => {
     buildingNumber,
     caseUrgencyLevel,
     caseDescription,
-    caseDeadline,
+    caseDeadline: validatedDeadline,
   });
 
   for (const damage of damages) {
+    // Validate and parse damageDate
+    let damageDate = null;
+    if (damage.damageDate) {
+      const parsedDate = new Date(damage.damageDate);
+      if (!isNaN(parsedDate.getTime())) {
+        damageDate = parsedDate;
+      } else {
+        console.warn(`Invalid damageDate provided: ${damage.damageDate}, using current date`);
+        damageDate = new Date();
+      }
+    } else {
+      // Default to current date if not provided
+      damageDate = new Date();
+    }
+
     const createdDamage = await Damage.create({
       caseId: newCase.caseId,
       damageLocation: damage.damageLocation,
       damageType: damage.damageType,
       damageDescription: damage.damageDescription,
-      damageDate: damage.damageDate,
+      damageDate: damageDate,
     });
 
     if (damage.photos && damage.photos.length > 0) {
