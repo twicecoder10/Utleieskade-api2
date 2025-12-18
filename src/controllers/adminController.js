@@ -259,83 +259,18 @@ exports.getPerformanceMetrics = async (req, res) => {
   }
 };
 
-// One-time migration endpoint to fix Property.propertyId from UUID to VARCHAR
+// Comprehensive migration endpoint to fix ALL UUID/STRING mismatches
 exports.fixPropertyUuid = async (req, res) => {
   try {
-    const sequelize = require("../config/db");
-    const { Property } = require("../models");
-
-    console.log("🔍 Checking Property.propertyId column type...");
+    const { migrateAllUuidMismatches } = require("../models");
     
-    // Check current column type
-    const [columnInfo] = await sequelize.query(`
-      SELECT data_type, udt_name
-      FROM information_schema.columns 
-      WHERE table_schema = 'public'
-      AND table_name = 'Property' 
-      AND column_name = 'propertyId';
-    `);
-
-    if (columnInfo.length === 0) {
-      responseHandler.setError(404, "Property table or propertyId column not found!");
-      return responseHandler.send(res);
-    }
-
-    const currentType = columnInfo[0].udt_name || columnInfo[0].data_type;
-    console.log(`📊 Current propertyId type: ${currentType}`);
-
-    if (currentType === "uuid") {
-      console.log("🔄 Property.propertyId is UUID. Converting to VARCHAR(255)...");
-      
-      // Step 1: Drop foreign key constraint
-      await sequelize.query(`
-        ALTER TABLE "Case" DROP CONSTRAINT IF EXISTS "Case_propertyId_fkey";
-      `);
-      console.log("✅ Foreign key constraint dropped");
-
-      // Step 2: Convert column type
-      await sequelize.query(`
-        ALTER TABLE "Property" 
-        ALTER COLUMN "propertyId" TYPE VARCHAR(255) 
-        USING "propertyId"::text;
-      `);
-      console.log("✅ Column type converted to VARCHAR(255)");
-
-      // Step 3: Recreate foreign key constraint
-      await sequelize.query(`
-        ALTER TABLE "Case" 
-        ADD CONSTRAINT "Case_propertyId_fkey" 
-        FOREIGN KEY ("propertyId") 
-        REFERENCES "Property"("propertyId") 
-        ON DELETE CASCADE;
-      `);
-      console.log("✅ Foreign key constraint recreated");
-
-      // Verify the change
-      const [verifyInfo] = await sequelize.query(`
-        SELECT data_type, udt_name
-        FROM information_schema.columns 
-        WHERE table_schema = 'public'
-        AND table_name = 'Property' 
-        AND column_name = 'propertyId';
-      `);
-      
-      const newType = verifyInfo[0].udt_name || verifyInfo[0].data_type;
-      console.log(`📊 New propertyId type: ${newType}`);
-      
-      responseHandler.setSuccess(200, "Migration completed successfully!", {
-        oldType: currentType,
-        newType: newType,
-        message: "Property.propertyId is now VARCHAR(255)"
-      });
-      return responseHandler.send(res);
-    } else {
-      responseHandler.setSuccess(200, "No migration needed", {
-        currentType: currentType,
-        message: `Property.propertyId is already ${currentType}`
-      });
-      return responseHandler.send(res);
-    }
+    console.log("🔄 Running comprehensive UUID/STRING migration via API endpoint...");
+    await migrateAllUuidMismatches();
+    
+    responseHandler.setSuccess(200, "Comprehensive migration completed successfully!", {
+      message: "All UUID/STRING mismatches have been fixed across the entire system"
+    });
+    return responseHandler.send(res);
   } catch (error) {
     console.error("❌ Error running migration:", error.message);
     responseHandler.setError(500, error.message || "Migration failed");
