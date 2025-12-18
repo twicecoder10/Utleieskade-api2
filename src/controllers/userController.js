@@ -80,14 +80,40 @@ exports.loginUser = async (req, res) => {
       return responseHandler.send(res);
     }
 
-    if (
-      (userType === "admin" &&
-        !["admin", "sub-admin"].includes(user.userType)) ||
-      (userType !== "admin" && userType !== user.userType)
-    ) {
+    // Allow tenant and landlord to login through either endpoint
+    // Admin and inspector still require exact match
+    if (userType === "admin") {
+      // Only admin and sub-admin can login as admin
+      if (!["admin", "sub-admin"].includes(user.userType)) {
+        responseHandler.setError(
+          403,
+          `Unauthorized access, ${user.userType} cannot login as ${userType}`
+        );
+        return responseHandler.send(res);
+      }
+    } else if (userType === "inspector") {
+      // Inspector must match exactly
+      if (user.userType !== "inspector") {
+        responseHandler.setError(
+          403,
+          `Unauthorized access, ${user.userType} cannot login as ${userType}`
+        );
+        return responseHandler.send(res);
+      }
+    } else if (["tenant", "landlord"].includes(userType)) {
+      // Allow tenant and landlord to login through either tenant or landlord endpoint
+      if (!["tenant", "landlord"].includes(user.userType)) {
+        responseHandler.setError(
+          403,
+          `Unauthorized access, ${user.userType} cannot login as ${userType}`
+        );
+        return responseHandler.send(res);
+      }
+    } else {
+      // Unknown userType in URL
       responseHandler.setError(
-        403,
-        `Unauthorized access, ${user.userType} cannot login as ${userType}`
+        400,
+        `Invalid user type: ${userType}`
       );
       return responseHandler.send(res);
     }
