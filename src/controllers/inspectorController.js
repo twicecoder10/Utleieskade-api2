@@ -34,7 +34,7 @@ exports.addInspector = async (req, res) => {
       userCity: userCity.trim(),
       userPostcode: userPostcode.trim(),
       userAddress: userAddress.trim(),
-      userCountry: userCountry.trim(),
+      userCountry: (userCountry && userCountry.trim()) || "Norway", // Default to Norway
       userType: "inspector",
       userPassword: await bcrypt.hash(password, 10),
     };

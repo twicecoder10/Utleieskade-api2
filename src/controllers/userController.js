@@ -18,6 +18,7 @@ exports.createUser = async (req, res) => {
       userAddress,
       userType,
       userPassword,
+      userCountry,
     } = req.body;
 
     const hashedPassword = await bcrypt.hash(userPassword.trim(), 10);
@@ -31,6 +32,7 @@ exports.createUser = async (req, res) => {
       userCity: userCity.trim(),
       userPostcode: userPostcode.trim(),
       userAddress: userAddress.trim(),
+      userCountry: (userCountry && userCountry.trim()) || "Norway", // Default to Norway
       userType,
       userPassword: hashedPassword,
       isVerified: false,
