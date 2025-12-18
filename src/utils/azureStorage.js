@@ -54,11 +54,14 @@ const uploadToAzure = async (fileBuffer, fileName, contentType) => {
   try {
     if (!containerClient) {
       if (!initializeAzureStorage()) {
-        throw new Error("Azure storage not initialized");
+        throw new Error("Azure storage not initialized - connection string may be missing or invalid");
       }
     }
 
-    await ensureContainerExists();
+    const containerExists = await ensureContainerExists();
+    if (!containerExists) {
+      throw new Error("Failed to ensure Azure container exists");
+    }
 
     // Generate unique blob name with timestamp
     const timestamp = Date.now();
@@ -80,7 +83,12 @@ const uploadToAzure = async (fileBuffer, fileName, contentType) => {
     console.log(`✅ File uploaded to Azure: ${blobUrl}`);
     return blobUrl;
   } catch (error) {
-    console.error("❌ Error uploading to Azure:", error.message);
+    console.error("❌ Error uploading to Azure:", {
+      message: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+      fileName: fileName,
+    });
     throw error;
   }
 };
