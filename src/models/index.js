@@ -105,33 +105,73 @@ const migratePropertyIdIfNeeded = async () => {
         if (isPostgres) {
           // First, drop any foreign key constraints that reference propertyId
           try {
-            await sequelize.query(`
-              DO $$ 
-              DECLARE 
-                r RECORD;
-              BEGIN
-                FOR r IN (SELECT constraint_name, table_name 
-                          FROM information_schema.table_constraints 
-                          WHERE constraint_type = 'FOREIGN KEY' 
-                          AND constraint_schema = 'public'
-                          AND constraint_name LIKE '%propertyId%') 
-                LOOP
-                  EXECUTE 'ALTER TABLE "' || r.table_name || '" DROP CONSTRAINT IF EXISTS "' || r.constraint_name || '"';
-                END LOOP;
-              END $$;
+            // Find all foreign keys that reference Property.propertyId
+            const [fkConstraints] = await sequelize.query(`
+              SELECT 
+                tc.constraint_name,
+                tc.table_name
+              FROM information_schema.table_constraints AS tc
+              JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+              JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+                AND ccu.table_schema = tc.table_schema
+              WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_schema = 'public'
+                AND ccu.table_name = 'Property'
+                AND ccu.column_name = 'propertyId';
             `);
-            console.log("✅ Dropped foreign key constraints");
+            
+            console.log(`📋 Found ${fkConstraints.length} foreign key constraint(s) to drop`);
+            
+            for (const fk of fkConstraints) {
+              try {
+                await sequelize.query(`
+                  ALTER TABLE "${fk.table_name}" 
+                  DROP CONSTRAINT IF EXISTS "${fk.constraint_name}";
+                `);
+                console.log(`✅ Dropped constraint ${fk.constraint_name} from ${fk.table_name}`);
+              } catch (dropError) {
+                console.log(`⚠️  Error dropping constraint ${fk.constraint_name}:`, dropError.message);
+              }
+            }
           } catch (fkError) {
-            console.log("ℹ️  No foreign key constraints to drop or error:", fkError.message);
+            console.log("⚠️  Error finding foreign key constraints:", fkError.message);
           }
 
           // Now alter the column type
+          console.log("🔄 Altering Property.propertyId column type...");
           await sequelize.query(`
             ALTER TABLE "Property" 
             ALTER COLUMN "propertyId" TYPE VARCHAR(255) 
             USING "propertyId"::text;
           `);
           console.log("✅ Column type changed to VARCHAR(255)");
+          
+          // Recreate foreign key constraints if they were dropped
+          // Case table has foreign key to Property
+          try {
+            await sequelize.query(`
+              DO $$
+              BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM information_schema.table_constraints 
+                  WHERE constraint_name = 'Case_propertyId_fkey' 
+                  AND table_name = 'Case'
+                ) THEN
+                  ALTER TABLE "Case" 
+                  ADD CONSTRAINT "Case_propertyId_fkey" 
+                  FOREIGN KEY ("propertyId") 
+                  REFERENCES "Property"("propertyId") 
+                  ON DELETE CASCADE;
+                END IF;
+              END $$;
+            `);
+            console.log("✅ Recreated foreign key constraints");
+          } catch (fkError) {
+            console.log("ℹ️  Foreign key constraint may already exist or error:", fkError.message);
+          }
         } else {
           await sequelize.query(`
             ALTER TABLE Property 
