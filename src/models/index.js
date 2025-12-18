@@ -587,6 +587,8 @@ PrivacyPolicySettings.belongsTo(User, {
 module.exports = {
   sequelize,
   syncDatabase,
+  migratePropertyIdIfNeeded,
+  migrateAllUuidMismatches,
   User,
   Case,
   CaseTimeline,
