@@ -13,35 +13,46 @@ exports.uploadFile = async (req, res) => {
   try {
     let fileUrl;
 
-    // Check if Azure storage is configured
+    // Check if file was actually saved to disk first
+    if (!fs.existsSync(req.file.path)) {
+      console.error("Upload error: File not saved to disk", req.file.path);
+      responseHandler.setError(500, "File upload failed. File was not saved.");
+      return responseHandler.send(res);
+    }
+
+    // Try Azure storage first if configured, fallback to local if it fails
     if (isAzureConfigured()) {
-      // Upload to Azure Blob Storage
-      const fileBuffer = fs.readFileSync(req.file.path);
-      fileUrl = await uploadToAzure(
-        fileBuffer,
-        req.file.originalname,
-        req.file.mimetype
-      );
-
-      // Delete local file after uploading to Azure
       try {
-        fs.unlinkSync(req.file.path);
-      } catch (deleteError) {
-        console.warn("⚠️  Could not delete local file after Azure upload:", deleteError.message);
-      }
-    } else {
-      // Fallback to local storage if Azure not configured
-      if (!fs.existsSync(req.file.path)) {
-        console.error("Upload error: File not saved to disk", req.file.path);
-        responseHandler.setError(500, "File upload failed. File was not saved.");
-        return responseHandler.send(res);
-      }
+        // Upload to Azure Blob Storage
+        const fileBuffer = fs.readFileSync(req.file.path);
+        fileUrl = await uploadToAzure(
+          fileBuffer,
+          req.file.originalname,
+          req.file.mimetype
+        );
 
+        // Delete local file after successful Azure upload
+        try {
+          fs.unlinkSync(req.file.path);
+          console.log("✅ Local file deleted after Azure upload");
+        } catch (deleteError) {
+          console.warn("⚠️  Could not delete local file after Azure upload:", deleteError.message);
+        }
+      } catch (azureError) {
+        console.error("❌ Azure upload failed, falling back to local storage:", azureError.message);
+        // Fall through to local storage fallback
+        fileUrl = null;
+      }
+    }
+
+    // Fallback to local storage if Azure not configured or failed
+    if (!fileUrl) {
       // Get relative path from uploads directory
       const uploadsDir = path.join(process.cwd(), "uploads");
       const relativeFilePath = path.relative(uploadsDir, req.file.path).replace(/\\/g, "/");
       
-      fileUrl = `${process.env.API_BASE_URL || process.env.UTLEIESKADE_BASE_URL || ""}/files/${relativeFilePath}`;
+      const baseUrl = process.env.API_BASE_URL || process.env.UTLEIESKADE_BASE_URL || "";
+      fileUrl = baseUrl ? `${baseUrl}/files/${relativeFilePath}` : `/files/${relativeFilePath}`;
     }
     
     console.log("File uploaded successfully:", {
