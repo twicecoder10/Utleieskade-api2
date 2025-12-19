@@ -963,10 +963,48 @@ router.post(
   "/cases/:caseId/claim",
   authMiddleware,
   authorizeRoles("inspector"),
-  (req, res, next) => {
-    // Wrap assignCase to use current inspector's ID
-    req.params.inspectorId = req.user.id;
-    caseController.assignCase(req, res, next);
+  async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const { id: inspectorId } = req.user;
+
+      const caseService = require("../services/caseService");
+      const updatedCase = await caseService.assignCase(caseId, inspectorId);
+
+      if (!updatedCase) {
+        const responseHandler = require("../utils/responseHandler");
+        responseHandler.setError(404, "Case or inspector not found");
+        return responseHandler.send(res);
+      }
+
+      // Log the action
+      await caseService.logCaseEvent(
+        caseId,
+        "inspectorAssigned",
+        `Case claimed by inspector`
+      );
+
+      // Log to action logs
+      const actionLogService = require("../services/actionLogService");
+      await actionLogService.createActionLog({
+        userId: inspectorId,
+        actionType: "case_claimed",
+        actionDescription: `Case ${caseId} claimed by inspector`,
+        caseId,
+      });
+
+      const responseHandler = require("../utils/responseHandler");
+      responseHandler.setSuccess(200, "Case claimed successfully", updatedCase);
+      return responseHandler.send(res);
+    } catch (error) {
+      const responseHandler = require("../utils/responseHandler");
+      if (error.message && error.message.includes("already claimed")) {
+        responseHandler.setError(400, error.message);
+      } else {
+        responseHandler.setError(500, error.message);
+      }
+      return responseHandler.send(res);
+    }
   }
 );
 
@@ -1055,10 +1093,53 @@ router.put(
   "/cases/:caseId/hold",
   authMiddleware,
   authorizeRoles("inspector"),
-  (req, res, next) => {
-    // Use updateCaseStatus to set status to "on-hold"
-    req.params.status = "on-hold";
-    caseController.updateCaseStatus(req, res, next);
+  async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const { holdReason } = req.body;
+      const { id: inspectorId } = req.user;
+
+      if (!holdReason) {
+        const responseHandler = require("../utils/responseHandler");
+        responseHandler.setError(400, "Hold reason is required");
+        return responseHandler.send(res);
+      }
+
+      // Update case status to on-hold
+      const caseService = require("../services/caseService");
+      const result = await caseService.updateCaseStatus(caseId, "on-hold");
+
+      if (!result) {
+        const responseHandler = require("../utils/responseHandler");
+        responseHandler.setError(404, "Case not found");
+        return responseHandler.send(res);
+      }
+
+      // Log the action
+      await caseService.logCaseEvent(
+        caseId,
+        "caseOnHold",
+        `Case put on hold: ${holdReason}`
+      );
+
+      // Log to action logs
+      const actionLogService = require("../services/actionLogService");
+      await actionLogService.createActionLog({
+        userId: inspectorId,
+        actionType: "case_on_hold",
+        actionDescription: `Case ${caseId} put on hold: ${holdReason}`,
+        caseId,
+        metadata: { holdReason },
+      });
+
+      const responseHandler = require("../utils/responseHandler");
+      responseHandler.setSuccess(200, "Case put on hold successfully");
+      return responseHandler.send(res);
+    } catch (error) {
+      const responseHandler = require("../utils/responseHandler");
+      responseHandler.setError(500, error.message);
+      return responseHandler.send(res);
+    }
   }
 );
 
