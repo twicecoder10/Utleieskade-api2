@@ -39,6 +39,10 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    userSignature: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     userStatus: {
       type: DataTypes.ENUM("active", "inactive", "suspended"),
       defaultValue: "active",

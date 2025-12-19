@@ -381,6 +381,7 @@ const getInspectorSettings = async (inspectorId) => {
       "userAddress",
       "userCountry",
       "userProfilePic",
+      "userSignature",
       "userStatus",
     ],
     include: [
@@ -433,6 +434,7 @@ const getInspectorSettings = async (inspectorId) => {
       userPostcode: inspector.userPostcode,
       userCountry: inspector.userCountry,
       userProfilePic: inspector.userProfilePic,
+      userSignature: inspector.userSignature,
       expertises: inspector.expertises.map((expertise) => ({
         expertiseCode: expertise.expertiseCode,
         expertiseArea: expertise.expertiseArea,
@@ -523,6 +525,22 @@ const updateInspectorSettings = async (inspectorId, data) => {
         await inspector.save();
       } catch (statusError) {
         console.error("Error updating user status:", statusError);
+      }
+    }
+
+    // Update profile picture and signature if provided
+    if (userProfilePic !== undefined || userSignature !== undefined) {
+      try {
+        const updateFields = {};
+        if (userProfilePic !== undefined) {
+          updateFields.userProfilePic = userProfilePic;
+        }
+        if (userSignature !== undefined) {
+          updateFields.userSignature = userSignature;
+        }
+        await User.update(updateFields, { where: { userId: inspectorId } });
+      } catch (profileError) {
+        console.error("Error updating profile picture/signature:", profileError);
       }
     }
 
