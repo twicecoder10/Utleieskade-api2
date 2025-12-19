@@ -452,7 +452,8 @@ const getInspectorSettings = async (inspectorId) => {
 
 const updateInspectorSettings = async (inspectorId, data) => {
   try {
-    const { notifications, payment, privacySecurity, expertises } = data;
+    console.log("updateInspectorSettings called with:", { inspectorId, dataKeys: Object.keys(data) });
+    const { notifications, payment, privacySecurity, expertises, userProfilePic, userSignature } = data;
 
     const inspector = await User.findOne({
       where: { userId: inspectorId },
@@ -460,8 +461,11 @@ const updateInspectorSettings = async (inspectorId, data) => {
     });
 
     if (!inspector) {
+      console.error("Inspector not found:", inspectorId);
       return { success: false, message: "Inspector not found" };
     }
+    
+    console.log("Inspector found, proceeding with updates");
 
     if (notifications) {
       try {
@@ -546,14 +550,24 @@ const updateInspectorSettings = async (inspectorId, data) => {
 
     if (expertises && Array.isArray(expertises)) {
       try {
+        // Ensure all expertise codes are numbers
+        const expertiseCodes = expertises
+          .map((code) => (typeof code === 'string' ? parseInt(code, 10) : code))
+          .filter((code) => !isNaN(code) && code !== null && code !== undefined);
+        
+        console.log("Updating expertises:", expertiseCodes);
+        
         const existingExpertises = (inspector.expertises || []).map((e) => e.expertiseCode);
 
-        const codesToAdd = expertises.filter(
+        const codesToAdd = expertiseCodes.filter(
           (code) => !existingExpertises.includes(code)
         );
         const codesToRemove = existingExpertises.filter(
-          (code) => !expertises.includes(code)
+          (code) => !expertiseCodes.includes(code)
         );
+
+        console.log("Expertises to add:", codesToAdd);
+        console.log("Expertises to remove:", codesToRemove);
 
         if (codesToRemove.length > 0) {
           await UserExpertise.destroy({
@@ -562,6 +576,7 @@ const updateInspectorSettings = async (inspectorId, data) => {
               expertiseCode: codesToRemove,
             },
           });
+          console.log("Removed expertises:", codesToRemove);
         }
 
         if (codesToAdd.length > 0) {
@@ -572,10 +587,17 @@ const updateInspectorSettings = async (inspectorId, data) => {
           await UserExpertise.bulkCreate(newExpertiseMappings, {
             ignoreDuplicates: true,
           });
+          console.log("Added expertises:", codesToAdd);
         }
       } catch (expertiseError) {
         console.error("Error updating expertises:", expertiseError);
-        // Continue even if expertises update fails
+        console.error("Expertise error details:", {
+          message: expertiseError.message,
+          name: expertiseError.name,
+          code: expertiseError.code,
+        });
+        // Re-throw to be caught by outer try-catch
+        throw new Error(`Failed to update expertises: ${expertiseError.message}`);
       }
     }
 
