@@ -57,13 +57,23 @@ exports.getCases = async (req, res) => {
 exports.getCaseDetails = async (req, res) => {
   try {
     const { caseId } = req.params;
+    
+    // Validate caseId is provided
+    if (!caseId) {
+      responseHandler.setError(400, "Case ID is required");
+      return responseHandler.send(res);
+    }
+
+    console.log(`[getCaseDetails] Fetching case: ${caseId}`);
     const caseDetails = await caseService.getCaseDetails(caseId);
 
     if (!caseDetails) {
+      console.log(`[getCaseDetails] Case not found: ${caseId}`);
       responseHandler.setError(404, "Case not found");
       return responseHandler.send(res);
     }
 
+    console.log(`[getCaseDetails] Case found: ${caseId}, returning details`);
     responseHandler.setSuccess(
       200,
       "Case details retrieved successfully",
@@ -71,7 +81,10 @@ exports.getCaseDetails = async (req, res) => {
     );
     return responseHandler.send(res);
   } catch (error) {
-    responseHandler.setError(500, error.message);
+    console.error("[getCaseDetails] Error:", error);
+    console.error("[getCaseDetails] Error stack:", error.stack);
+    const errorMessage = error.message || "Internal server error";
+    responseHandler.setError(500, errorMessage);
     return responseHandler.send(res);
   }
 };

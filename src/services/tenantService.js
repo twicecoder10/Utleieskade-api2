@@ -227,6 +227,52 @@ const getTenantDashboard = async (tenantId) => {
     },
   });
 
+  // Get scheduled inspections (cases with deadlines or assigned inspector)
+  const scheduledInspectionsCount = await Case.count({
+    where: {
+      userId: tenantId,
+      caseStatus: { [Op.in]: ["open", "pending", "in-progress"] },
+      [Op.or]: [
+        { caseDeadline: { [Op.ne]: null } },
+        { inspectorId: { [Op.ne]: null } }
+      ],
+    },
+  });
+
+  // Get next upcoming inspection (case with nearest deadline)
+  const nextInspectionCase = await Case.findOne({
+    where: {
+      userId: tenantId,
+      caseStatus: { [Op.in]: ["open", "pending", "in-progress"] },
+      caseDeadline: { [Op.gte]: new Date() },
+    },
+    attributes: ["caseId", "caseDeadline"],
+    order: [["caseDeadline", "ASC"]],
+  });
+
+  // Format next inspection date
+  let nextInspection = "No upcoming inspections";
+  if (nextInspectionCase && nextInspectionCase.caseDeadline) {
+    const inspectionDate = new Date(nextInspectionCase.caseDeadline);
+    const now = new Date();
+    const diff = inspectionDate - now;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) {
+      nextInspection = "Today";
+    } else if (days === 1) {
+      nextInspection = "Tomorrow";
+    } else if (days < 7) {
+      nextInspection = `In ${days} days`;
+    } else {
+      nextInspection = inspectionDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+  }
+
   // Get cases with deadlines for time remaining calculation
   const casesWithDeadlines = await Case.findAll({
     where: {
@@ -269,6 +315,8 @@ const getTenantDashboard = async (tenantId) => {
       count: resolvedCasesCount,
       // last30Days: true,
     },
+    scheduledInspections: scheduledInspectionsCount,
+    nextInspection: nextInspection,
     casesWithTimeRemaining: casesWithTimeRemaining,
   };
 };
