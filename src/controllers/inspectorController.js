@@ -338,21 +338,45 @@ exports.getInspectorSettings = async (req, res) => {
 exports.updateInspectorSettings = async (req, res) => {
   try {
     const inspectorId = req.user.id;
+    console.log("updateInspectorSettings controller called for inspector:", inspectorId);
+    console.log("Request body keys:", Object.keys(req.body));
+    
     const updateResult = await inspectorService.updateInspectorSettings(
       inspectorId,
       req.body
     );
 
     if (!updateResult.success) {
+      console.error("Update failed:", updateResult.message);
       responseHandler.setError(400, updateResult.message);
       return responseHandler.send(res);
     }
 
+    console.log("Settings updated successfully");
     responseHandler.setSuccess(200, updateResult.message);
     return responseHandler.send(res);
   } catch (error) {
     console.error("Error updating inspector settings:", error);
-    responseHandler.setError(500, "Internal server error");
+    console.error("Error stack:", error.stack);
+    console.error("Error details:", {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    });
+    
+    // Provide more specific error message
+    let errorMessage = "Internal server error";
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (error.code === '23505') {
+      errorMessage = "Duplicate entry. This value already exists.";
+    } else if (error.code === '23503') {
+      errorMessage = "Invalid reference. One of the values doesn't exist.";
+    } else if (error.message && error.message.includes("column") && error.message.includes("does not exist")) {
+      errorMessage = "Database schema mismatch. Please contact support.";
+    }
+    
+    responseHandler.setError(500, errorMessage);
     return responseHandler.send(res);
   }
 };
