@@ -121,12 +121,12 @@ exports.updateCaseStatus = async (req, res) => {
       return responseHandler.send(res);
     }
 
-    const ALLOWED_STATUSES = ["open", "completed", "on-hold", "pending"];
+    const ALLOWED_STATUSES = ["open", "completed", "on-hold", "pending", "in-progress"];
 
     if (!ALLOWED_STATUSES.includes(normalizedStatus)) {
       responseHandler.setError(
         400,
-        `Status type of ${status} is not recognized`
+        `Status type of ${status} is not recognized. Allowed statuses: ${ALLOWED_STATUSES.join(", ")}`
       );
       return responseHandler.send(res);
     }

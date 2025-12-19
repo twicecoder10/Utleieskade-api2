@@ -20,7 +20,8 @@ const Case = sequelize.define(
         "completed",
         "cancelled",
         "on-hold",
-        "pending"
+        "pending",
+        "in-progress"
       ),
       defaultValue: "open",
     },

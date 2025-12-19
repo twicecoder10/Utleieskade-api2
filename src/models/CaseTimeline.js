@@ -24,7 +24,9 @@ const CaseTimeline = sequelize.define(
         "caseCompleted",
         "caseCancelled",
         "deadlineExtended",
-        "statusChange"
+        "statusChange",
+        "caseOnHold",
+        "caseReleased"
       ),
       allowNull: false,
     },
