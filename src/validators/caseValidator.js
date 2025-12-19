@@ -5,8 +5,8 @@ const caseValidationRules = () => {
     body("propertyId")
       .notEmpty()
       .withMessage("Property ID is required")
-      .isUUID()
-      .withMessage("Invalid Property ID format"),
+      .isString()
+      .withMessage("Property ID must be a string"),
 
     body("buildingNumber")
       .optional()
