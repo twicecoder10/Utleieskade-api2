@@ -83,60 +83,53 @@ exports.startTimer = async (req, res) => {
     // Create new timer session
     // Handle case where caseId or isActive columns might not exist yet
     let newTimer;
-    try {
-      // Try creating with all new fields
-      newTimer = await TrackingTime.create({
-        caseId,
-        inspectorId,
-        trackingTimeStart: new Date(),
-        isActive: true,
-      });
-      console.log("✅ Timer created successfully with all fields");
-    } catch (createError) {
-      const errorMsg = createError.message || String(createError);
-      const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
-      const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
-      
-      console.warn("Error creating timer with all fields:", errorMsg);
-      
-      if (hasCaseIdError || hasIsActiveError) {
-        // Build timer data without missing columns
-        const timerData = {
-          inspectorId,
-          trackingTimeStart: new Date(),
-        };
+    const timerAttempts = [
+      // Attempt 1: Try with all fields
+      { caseId, inspectorId, trackingTimeStart: new Date(), isActive: true },
+      // Attempt 2: Without isActive
+      { caseId, inspectorId, trackingTimeStart: new Date() },
+      // Attempt 3: Without caseId and isActive
+      { inspectorId, trackingTimeStart: new Date() },
+    ];
+    
+    let lastError = null;
+    for (let i = 0; i < timerAttempts.length; i++) {
+      try {
+        const attemptData = timerAttempts[i];
+        console.log(`Attempting to create timer (attempt ${i + 1}/${timerAttempts.length}) with fields:`, Object.keys(attemptData));
+        newTimer = await TrackingTime.create(attemptData);
+        console.log(`✅ Timer created successfully on attempt ${i + 1}`);
+        break;
+      } catch (createError) {
+        const errorMsg = createError.message || String(createError);
+        const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column") || errorMsg.includes("of relation"));
+        const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column") || errorMsg.includes("of relation"));
         
-        if (!hasCaseIdError) {
-          timerData.caseId = caseId;
-        }
-        if (!hasIsActiveError) {
-          timerData.isActive = true;
-        }
+        console.warn(`Attempt ${i + 1} failed:`, errorMsg);
+        lastError = createError;
         
-        try {
-          newTimer = await TrackingTime.create(timerData);
-          console.log("✅ Timer created successfully with fallback fields:", Object.keys(timerData));
-        } catch (fallbackError) {
-          const fallbackMsg = fallbackError.message || String(fallbackError);
-          console.error("Error creating timer with fallback:", fallbackMsg);
-          
-          // Last resort: create with only required fields
-          try {
-            newTimer = await TrackingTime.create({
-              inspectorId,
-              trackingTimeStart: new Date(),
-            });
-            console.log("✅ Timer created with minimal fields");
-          } catch (minimalError) {
-            console.error("Failed to create timer even with minimal fields:", minimalError.message);
-            throw new Error(`Failed to create timer: ${minimalError.message}`);
+        // If this is the last attempt, throw the error
+        if (i === timerAttempts.length - 1) {
+          // Check if it's a column error - if so, we've tried all combinations
+          if (hasCaseIdError || hasIsActiveError) {
+            console.error("All timer creation attempts failed due to missing columns");
+            throw new Error(`Failed to create timer: Database schema missing required columns. Please add 'caseId' and/or 'isActive' columns to TrackingTime table. Original error: ${errorMsg}`);
+          } else {
+            // If it's not a column error, throw the original error
+            throw createError;
           }
         }
-      } else {
-        // If it's not a column error, re-throw
-        console.error("Unexpected error creating timer:", errorMsg);
-        throw createError;
+        
+        // If it's not a column error and we have more attempts, continue
+        if (!hasCaseIdError && !hasIsActiveError) {
+          // This might be a different error, but let's try the next attempt anyway
+          continue;
+        }
       }
+    }
+    
+    if (!newTimer) {
+      throw new Error(`Failed to create timer after ${timerAttempts.length} attempts: ${lastError?.message || 'Unknown error'}`);
     }
 
     responseHandler.setSuccess(200, "Timer started successfully", {
