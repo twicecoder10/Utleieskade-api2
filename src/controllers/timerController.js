@@ -279,12 +279,24 @@ exports.getTimer = async (req, res) => {
     const { caseId } = req.params;
     const { id: inspectorId } = req.user;
 
+    // Verify case exists and is assigned to this inspector
+    const caseItem = await Case.findOne({
+      where: { caseId, inspectorId },
+    });
+
+    if (!caseItem) {
+      responseHandler.setError(404, "Case not found or not assigned to you");
+      return responseHandler.send(res);
+    }
+
     // Get active timer
     // Handle case where caseId or isActive columns might not exist yet
-    let activeTimer;
-    let completedTimers;
+    let activeTimer = null;
+    let completedTimers = [];
     
+    // First, try to check if caseId column exists by attempting a simple query
     try {
+      // Try with all new columns first
       activeTimer = await TrackingTime.findOne({
         where: {
           caseId,
@@ -306,8 +318,9 @@ exports.getTimer = async (req, res) => {
       });
     } catch (dbError) {
       // Handle missing columns - try different combinations
-      const hasCaseIdError = dbError.message && dbError.message.includes("caseId") && dbError.message.includes("does not exist");
-      const hasIsActiveError = dbError.message && dbError.message.includes("isActive") && dbError.message.includes("does not exist");
+      const errorMsg = dbError.message || "";
+      const hasCaseIdError = errorMsg.includes("caseId") && errorMsg.includes("does not exist");
+      const hasIsActiveError = errorMsg.includes("isActive") && errorMsg.includes("does not exist");
       
       if (hasCaseIdError || hasIsActiveError) {
         console.warn("Some columns don't exist yet, querying with fallback");
@@ -327,15 +340,22 @@ exports.getTimer = async (req, res) => {
           });
         } catch (isActiveErr) {
           // If isActive doesn't exist, use trackingTimeEnd null
-          if (isActiveErr.message && isActiveErr.message.includes("isActive")) {
+          const isActiveErrMsg = isActiveErr.message || "";
+          if (isActiveErrMsg.includes("isActive") && isActiveErrMsg.includes("does not exist")) {
             delete whereClause.isActive;
             whereClause.trackingTimeEnd = null;
-            activeTimer = await TrackingTime.findOne({
-              where: whereClause,
-              order: [["trackingTimeStart", "DESC"]],
-            });
+            try {
+              activeTimer = await TrackingTime.findOne({
+                where: whereClause,
+                order: [["trackingTimeStart", "DESC"]],
+              });
+            } catch (finalErr) {
+              console.warn("Could not find active timer with fallback:", finalErr.message);
+              activeTimer = null;
+            }
           } else {
-            throw isActiveErr;
+            console.warn("Error checking for active timer:", isActiveErr.message);
+            activeTimer = null;
           }
         }
         
@@ -349,11 +369,17 @@ exports.getTimer = async (req, res) => {
         }
         completedWhere.trackingTimeEnd = { [Op.ne]: null };
         
-        completedTimers = await TrackingTime.findAll({
-          where: completedWhere,
-          order: [["trackingTimeStart", "DESC"]],
-        });
+        try {
+          completedTimers = await TrackingTime.findAll({
+            where: completedWhere,
+            order: [["trackingTimeStart", "DESC"]],
+          });
+        } catch (completedErr) {
+          console.warn("Error fetching completed timers:", completedErr.message);
+          completedTimers = [];
+        }
       } else {
+        // If it's not a column error, re-throw
         throw dbError;
       }
     }
