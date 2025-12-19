@@ -242,6 +242,7 @@ const getCaseConversation = async (caseId, inspectorId) => {
         model: User,
         as: "tenant",
         attributes: ["userId", "userFirstName", "userLastName", "userProfilePic"],
+        required: false,
       },
     ],
   });

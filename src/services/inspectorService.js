@@ -90,10 +90,27 @@ const getInspectorDasboard = async (inspectorId) => {
       limit: 10,
     }) || [];
 
+    // Helper function to calculate time remaining
+    const calculateTimeRemaining = (deadline) => {
+      if (!deadline) return null;
+      const now = new Date();
+      const deadlineDate = new Date(deadline);
+      const diff = deadlineDate - now;
+      
+      if (diff <= 0) return { expired: true, days: 0, hours: 0, minutes: 0 };
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      return { expired: false, days, hours, minutes };
+    };
+
     // Transform cases to match frontend expectations
     const prioritizedCases = prioritizedCasesRaw.map((caseItem) => {
       const caseData = caseItem.get({ plain: true });
       const tenant = caseData.tenant;
+      const timeRemaining = calculateTimeRemaining(caseData.caseDeadline);
       
       return {
         caseId: caseData.caseId,
@@ -102,6 +119,7 @@ const getInspectorDasboard = async (inspectorId) => {
         caseDeadline: caseData.caseDeadline,
         caseUrgencyLevel: caseData.caseUrgencyLevel,
         createdAt: caseData.createdAt,
+        timeRemaining: timeRemaining,
         tenantName: tenant 
           ? `${tenant.userFirstName || ""} ${tenant.userLastName || ""}`.trim()
           : "N/A",

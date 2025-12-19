@@ -227,6 +227,38 @@ const getTenantDashboard = async (tenantId) => {
     },
   });
 
+  // Get cases with deadlines for time remaining calculation
+  const casesWithDeadlines = await Case.findAll({
+    where: {
+      userId: tenantId,
+      caseStatus: { [Op.in]: ["open", "pending", "on-hold"] },
+      caseDeadline: { [Op.ne]: null },
+    },
+    attributes: ["caseId", "caseDeadline"],
+    limit: 10,
+  });
+
+  // Helper function to calculate time remaining
+  const calculateTimeRemaining = (deadline) => {
+    if (!deadline) return null;
+    const now = new Date();
+    const deadlineDate = new Date(deadline);
+    const diff = deadlineDate - now;
+    
+    if (diff <= 0) return { expired: true, days: 0, hours: 0, minutes: 0 };
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return { expired: false, days, hours, minutes };
+  };
+
+  const casesWithTimeRemaining = casesWithDeadlines.map((caseItem) => ({
+    caseId: caseItem.caseId,
+    timeRemaining: calculateTimeRemaining(caseItem.caseDeadline),
+  }));
+
   return {
     welcomeMessage: `Welcome back ${tenant?.userFirstName || "User"} 👋`,
     activeCases: {
@@ -237,6 +269,7 @@ const getTenantDashboard = async (tenantId) => {
       count: resolvedCasesCount,
       // last30Days: true,
     },
+    casesWithTimeRemaining: casesWithTimeRemaining,
   };
 };
 
