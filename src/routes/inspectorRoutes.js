@@ -984,14 +984,7 @@ router.post(
         `Case claimed by inspector`
       );
 
-      // Log to action logs
-      const actionLogService = require("../services/actionLogService");
-      await actionLogService.createActionLog({
-        userId: inspectorId,
-        actionType: "case_claimed",
-        actionDescription: `Case ${caseId} claimed by inspector`,
-        caseId,
-      });
+      // Action logging is handled by logCaseEvent above
 
       const responseHandler = require("../utils/responseHandler");
       responseHandler.setSuccess(200, "Case claimed successfully", updatedCase);
@@ -1122,15 +1115,7 @@ router.put(
         `Case put on hold: ${holdReason}`
       );
 
-      // Log to action logs
-      const actionLogService = require("../services/actionLogService");
-      await actionLogService.createActionLog({
-        userId: inspectorId,
-        actionType: "case_on_hold",
-        actionDescription: `Case ${caseId} put on hold: ${holdReason}`,
-        caseId,
-        metadata: { holdReason },
-      });
+      // Action logging is handled by logCaseEvent above
 
       const responseHandler = require("../utils/responseHandler");
       responseHandler.setSuccess(200, "Case put on hold successfully");
