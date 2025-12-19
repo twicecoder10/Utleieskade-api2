@@ -32,19 +32,19 @@ const getInspectorDasboard = async (inspectorId) => {
       throw new Error("Inspector ID is required");
     }
 
-    const inspector = await User.findOne({
-      where: { userId: inspectorId, userType: "inspector" },
-      attributes: ["userFirstName", "userLastName"],
-    });
+  const inspector = await User.findOne({
+    where: { userId: inspectorId, userType: "inspector" },
+    attributes: ["userFirstName", "userLastName"],
+  });
 
     if (!inspector) {
       throw new Error("Inspector not found");
     }
 
     // Count active cases - includes open, in-progress, and on-hold (excludes completed and cancelled)
-    const activeCases = await Case.count({
-      where: {
-        inspectorId,
+  const activeCases = await Case.count({
+    where: {
+      inspectorId,
         caseStatus: {
           [Op.in]: ["open", "in-progress", "on-hold", "pending"],
         },
@@ -132,13 +132,77 @@ const getInspectorDasboard = async (inspectorId) => {
       };
     });
 
-    // Calculate total work hours and minutes from case timers
-    // For now, return 0 if timer functionality doesn't exist
-    const totalWorkHours = 0;
-    const totalWorkMinutes = 0;
+    // Calculate total work hours and minutes from TrackingTime
+    let totalWorkHours = 0;
+    let totalWorkMinutes = 0;
+    
+    try {
+      const { TrackingTime } = require("../models/index");
+      const { Op } = require("sequelize");
+      
+      // Get all completed timer sessions for this inspector
+      // Handle case where caseId or isActive columns might not exist
+      let completedTimers = [];
+      
+      try {
+        // Try with all new columns first
+        completedTimers = await TrackingTime.findAll({
+          where: {
+            inspectorId,
+            isActive: false,
+            trackingTimeEnd: { [Op.ne]: null },
+          },
+          attributes: ["trackingTimeStart", "trackingTimeEnd"],
+        });
+      } catch (dbError) {
+        const errorMsg = dbError.message || String(dbError);
+        const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column") || errorMsg.includes("of relation"));
+        
+        if (hasIsActiveError) {
+          // Fallback: get timers where trackingTimeEnd is not null
+          try {
+            completedTimers = await TrackingTime.findAll({
+              where: {
+                inspectorId,
+                trackingTimeEnd: { [Op.ne]: null },
+              },
+              attributes: ["trackingTimeStart", "trackingTimeEnd"],
+            });
+          } catch (fallbackError) {
+            console.warn("Could not fetch work hours:", fallbackError.message);
+            completedTimers = [];
+          }
+        } else {
+          console.warn("Error fetching work hours:", errorMsg);
+          completedTimers = [];
+        }
+      }
+      
+      // Calculate total time from completed sessions
+      let totalSeconds = 0;
+      completedTimers.forEach((timer) => {
+        if (timer.trackingTimeStart && timer.trackingTimeEnd) {
+          const start = new Date(timer.trackingTimeStart);
+          const end = new Date(timer.trackingTimeEnd);
+          const duration = Math.floor((end - start) / 1000); // seconds
+          totalSeconds += duration;
+        }
+      });
+      
+      const totalMinutesCalc = Math.floor(totalSeconds / 60);
+      totalWorkHours = Math.floor(totalMinutesCalc / 60);
+      totalWorkMinutes = totalMinutesCalc % 60; // Remaining minutes after hours
+      
+      console.log(`Calculated work hours for inspector ${inspectorId}: ${totalWorkHours}h ${totalWorkMinutes}m (${totalMinutesCalc} total minutes)`);
+    } catch (timerError) {
+      console.error("Error calculating work hours:", timerError);
+      // Default to 0 if TrackingTime doesn't exist or has issues
+      totalWorkHours = 0;
+      totalWorkMinutes = 0;
+    }
 
-    return {
-      welcomeMessage: `Welcome back ${inspector?.userFirstName || "User"} 👋`,
+  return {
+    welcomeMessage: `Welcome back ${inspector?.userFirstName || "User"} 👋`,
       totalEarnings: totalEarnings || 0,
       activeCases: activeCases || 0,
       prioritizedCases: prioritizedCases || [],
@@ -300,26 +364,26 @@ const getInspectorCases = async ({
 
 const getInspectorEarnings = async (inspectorId) => {
   try {
-    const totalBalance = await InspectorPayment.sum("paymentAmount", {
-      where: {
-        inspectorId,
-        paymentStatus: "pending",
-      },
+  const totalBalance = await InspectorPayment.sum("paymentAmount", {
+    where: {
+      inspectorId,
+      paymentStatus: "pending",
+    },
     }) || 0;
 
-    const payoutHistory = await InspectorPayment.findAll({
-      where: { inspectorId },
-      attributes: [
-        ["paymentDate", "date"],
-        ["paymentId", "referenceNumber"],
-        ["paymentAmount", "amount"],
-        ["paymentStatus", "status"],
-      ],
-      order: [["paymentDate", "DESC"]],
-      raw: true,
+  const payoutHistory = await InspectorPayment.findAll({
+    where: { inspectorId },
+    attributes: [
+      ["paymentDate", "date"],
+      ["paymentId", "referenceNumber"],
+      ["paymentAmount", "amount"],
+      ["paymentStatus", "status"],
+    ],
+    order: [["paymentDate", "DESC"]],
+    raw: true,
     }) || [];
 
-    return {
+  return {
       totalBalance,
       payoutHistory: payoutHistory.map((payment) => ({
         ...payment,
@@ -478,19 +542,19 @@ const updateInspectorSettings = async (inspectorId, data) => {
     console.log("updateInspectorSettings called with:", { inspectorId, dataKeys: Object.keys(data) });
     const { notifications, payment, privacySecurity, expertises, userProfilePic, userSignature } = data;
 
-    const inspector = await User.findOne({
-      where: { userId: inspectorId },
-      include: [{ model: Expertise, as: "expertises" }],
-    });
+  const inspector = await User.findOne({
+    where: { userId: inspectorId },
+    include: [{ model: Expertise, as: "expertises" }],
+  });
 
-    if (!inspector) {
+  if (!inspector) {
       console.error("Inspector not found:", inspectorId);
-      return { success: false, message: "Inspector not found" };
-    }
+    return { success: false, message: "Inspector not found" };
+  }
     
     console.log("Inspector found, proceeding with updates");
 
-    if (notifications) {
+  if (notifications) {
       try {
         // Check if NotificationSettings record exists, create if not
         const existingSettings = await NotificationSettings.findOne({
@@ -498,10 +562,10 @@ const updateInspectorSettings = async (inspectorId, data) => {
         });
         
         if (existingSettings) {
-          await NotificationSettings.update(
-            { ...notifications },
-            { where: { userId: inspectorId } }
-          );
+    await NotificationSettings.update(
+      { ...notifications },
+      { where: { userId: inspectorId } }
+    );
         } else {
           await NotificationSettings.create({
             userId: inspectorId,
@@ -512,9 +576,9 @@ const updateInspectorSettings = async (inspectorId, data) => {
         console.error("Error updating notifications:", notifError);
         // Continue with other updates even if notifications fail
       }
-    }
+  }
 
-    if (payment) {
+  if (payment) {
       try {
         // Check if BankDetails record exists, create if not
         const existingBank = await BankDetails.findOne({
@@ -522,15 +586,15 @@ const updateInspectorSettings = async (inspectorId, data) => {
         });
         
         if (existingBank) {
-          await BankDetails.update(
-            {
-              bankName: payment.bankName,
-              accountNumber: payment.accountNumber,
-              userFirstName: payment.userFirstName,
-              userLastName: payment.userLastName,
-            },
-            { where: { userId: inspectorId } }
-          );
+    await BankDetails.update(
+      {
+        bankName: payment.bankName,
+        accountNumber: payment.accountNumber,
+        userFirstName: payment.userFirstName,
+        userLastName: payment.userLastName,
+      },
+      { where: { userId: inspectorId } }
+    );
         } else {
           await BankDetails.create({
             userId: inspectorId,
@@ -549,7 +613,7 @@ const updateInspectorSettings = async (inspectorId, data) => {
     if (privacySecurity && privacySecurity.pauseMode !== undefined) {
       try {
         inspector.userStatus = privacySecurity.pauseMode ? "inactive" : "active";
-        await inspector.save();
+    await inspector.save();
       } catch (statusError) {
         console.error("Error updating user status:", statusError);
       }
@@ -583,30 +647,30 @@ const updateInspectorSettings = async (inspectorId, data) => {
         const existingExpertises = (inspector.expertises || []).map((e) => e.expertiseCode);
 
         const codesToAdd = expertiseCodes.filter(
-          (code) => !existingExpertises.includes(code)
-        );
-        const codesToRemove = existingExpertises.filter(
+      (code) => !existingExpertises.includes(code)
+    );
+    const codesToRemove = existingExpertises.filter(
           (code) => !expertiseCodes.includes(code)
-        );
+    );
 
         console.log("Expertises to add:", codesToAdd);
         console.log("Expertises to remove:", codesToRemove);
 
-        if (codesToRemove.length > 0) {
-          await UserExpertise.destroy({
-            where: {
-              userId: inspectorId,
-              expertiseCode: codesToRemove,
-            },
-          });
+    if (codesToRemove.length > 0) {
+      await UserExpertise.destroy({
+        where: {
+          userId: inspectorId,
+          expertiseCode: codesToRemove,
+        },
+      });
           console.log("Removed expertises:", codesToRemove);
-        }
+    }
 
-        if (codesToAdd.length > 0) {
-          const newExpertiseMappings = codesToAdd.map((code) => ({
-            userId: inspectorId,
-            expertiseCode: code,
-          }));
+    if (codesToAdd.length > 0) {
+      const newExpertiseMappings = codesToAdd.map((code) => ({
+        userId: inspectorId,
+        expertiseCode: code,
+      }));
           await UserExpertise.bulkCreate(newExpertiseMappings, {
             ignoreDuplicates: true,
           });
@@ -621,10 +685,10 @@ const updateInspectorSettings = async (inspectorId, data) => {
         });
         // Re-throw to be caught by outer try-catch
         throw new Error(`Failed to update expertises: ${expertiseError.message}`);
-      }
     }
+  }
 
-    return { success: true, message: "Inspector settings updated successfully" };
+  return { success: true, message: "Inspector settings updated successfully" };
   } catch (error) {
     console.error("Error in updateInspectorSettings:", error);
     throw error;
