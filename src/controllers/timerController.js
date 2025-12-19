@@ -91,16 +91,17 @@ exports.startTimer = async (req, res) => {
     
     // Try to create using raw SQL with different column combinations
     // Handle both TIME and TIMESTAMP/DATE column types
+    // Include trackingTimeEnd with a default value to satisfy NOT NULL constraint
     const attempts = [
       // Attempt 1: With caseId and isActive, using NOW() for timestamp compatibility
-      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "isActive", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, NOW(), $3, NOW(), NOW()) RETURNING *`,
+      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW(), $3, NOW(), NOW()) RETURNING *`,
       // Attempt 2: Without isActive
-      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW(), NOW()) RETURNING *`,
+      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW(), NOW(), NOW()) RETURNING *`,
       // Attempt 3: Without caseId and isActive
-      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, NOW(), NOW(), NOW()) RETURNING *`,
+      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, NOW(), NOW(), NOW(), NOW()) RETURNING *`,
     ];
     
     const attemptParams = [
