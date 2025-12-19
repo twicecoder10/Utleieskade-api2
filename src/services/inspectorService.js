@@ -683,6 +683,79 @@ const getInspectorReports = async ({ inspectorId, page, limit, search }) => {
   };
 };
 
+const getReportPreview = async (caseId, inspectorId) => {
+  const { Report, Case, AssessmentItem, AssessmentSummary, ReportPhoto } = require("../models/index");
+  
+  // Verify case exists and is assigned to this inspector
+  const caseItem = await Case.findOne({
+    where: { caseId, inspectorId },
+  });
+
+  if (!caseItem) {
+    return null;
+  }
+
+  // Get the latest report for this case
+  const report = await Report.findOne({
+    where: { caseId, inspectorId },
+    include: [
+      {
+        model: AssessmentItem,
+        as: "assessmentItems",
+      },
+      {
+        model: AssessmentSummary,
+        as: "assessmentSummary",
+      },
+      {
+        model: ReportPhoto,
+        as: "reportPhotos",
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+
+  return report;
+};
+
+const deleteReport = async (reportId, inspectorId) => {
+  const { Report, AssessmentItem, AssessmentSummary, ReportPhoto } = require("../models/index");
+  
+  const report = await Report.findOne({
+    where: { reportId, inspectorId },
+  });
+
+  if (!report) {
+    return null;
+  }
+
+  // Delete related data
+  await AssessmentItem.destroy({ where: { reportId } });
+  await AssessmentSummary.destroy({ where: { reportId } });
+  await ReportPhoto.destroy({ where: { reportId } });
+  
+  // Delete the report
+  await report.destroy();
+
+  return { success: true };
+};
+
+const getReportPdf = async (reportId, inspectorId) => {
+  const { Report } = require("../models/index");
+  
+  const report = await Report.findOne({
+    where: { reportId, inspectorId },
+    attributes: ["pdfUrl"],
+  });
+
+  if (!report) {
+    return null;
+  }
+
+  // Return the PDF URL if it exists
+  return report.pdfUrl || null;
+};
+
 module.exports = {
   getInspectorById,
   getAllInspectors,
