@@ -18,9 +18,10 @@ exports.startTimer = async (req, res) => {
     }
 
     // Check if there's an active timer for this case
-    // Handle case where caseId column might not exist yet
+    // Handle case where caseId or isActive columns might not exist yet
     let activeTimer;
     try {
+      // Try with both caseId and isActive
       activeTimer = await TrackingTime.findOne({
         where: {
           caseId,
@@ -29,15 +30,54 @@ exports.startTimer = async (req, res) => {
         },
       });
     } catch (dbError) {
-      // If column doesn't exist, check without caseId
-      if (dbError.message && dbError.message.includes("column") && dbError.message.includes("does not exist")) {
+      // If caseId column doesn't exist, check without it
+      if (dbError.message && dbError.message.includes("caseId") && dbError.message.includes("does not exist")) {
         console.warn("caseId column doesn't exist yet, checking without it");
-        activeTimer = await TrackingTime.findOne({
-          where: {
-            inspectorId,
-            isActive: true,
-          },
-        });
+        try {
+          activeTimer = await TrackingTime.findOne({
+            where: {
+              inspectorId,
+              isActive: true,
+            },
+          });
+        } catch (isActiveError) {
+          // If isActive also doesn't exist, check for timer without end time
+          if (isActiveError.message && isActiveError.message.includes("isActive") && isActiveError.message.includes("does not exist")) {
+            console.warn("isActive column doesn't exist yet, checking for timer without end time");
+            activeTimer = await TrackingTime.findOne({
+              where: {
+                inspectorId,
+                trackingTimeEnd: null,
+              },
+            });
+          } else {
+            throw isActiveError;
+          }
+        }
+      } else if (dbError.message && dbError.message.includes("isActive") && dbError.message.includes("does not exist")) {
+        // If only isActive doesn't exist, check without it
+        console.warn("isActive column doesn't exist yet, checking for timer without end time");
+        try {
+          activeTimer = await TrackingTime.findOne({
+            where: {
+              caseId,
+              inspectorId,
+              trackingTimeEnd: null,
+            },
+          });
+        } catch (caseIdError) {
+          // If caseId also doesn't exist
+          if (caseIdError.message && caseIdError.message.includes("caseId") && caseIdError.message.includes("does not exist")) {
+            activeTimer = await TrackingTime.findOne({
+              where: {
+                inspectorId,
+                trackingTimeEnd: null,
+              },
+            });
+          } else {
+            throw caseIdError;
+          }
+        }
       } else {
         throw dbError;
       }
@@ -49,9 +89,10 @@ exports.startTimer = async (req, res) => {
     }
 
     // Create new timer session
-    // Handle case where caseId column might not exist yet
+    // Handle case where caseId or isActive columns might not exist yet
     let newTimer;
     try {
+      // Try creating with all new fields
       newTimer = await TrackingTime.create({
         caseId,
         inspectorId,
@@ -59,14 +100,47 @@ exports.startTimer = async (req, res) => {
         isActive: true,
       });
     } catch (createError) {
-      // If column doesn't exist, create without caseId
-      if (createError.message && createError.message.includes("column") && createError.message.includes("does not exist")) {
+      // If caseId doesn't exist, try without it
+      if (createError.message && createError.message.includes("caseId") && createError.message.includes("does not exist")) {
         console.warn("caseId column doesn't exist yet, creating without it");
-        newTimer = await TrackingTime.create({
-          inspectorId,
-          trackingTimeStart: new Date(),
-          isActive: true,
-        });
+        try {
+          newTimer = await TrackingTime.create({
+            inspectorId,
+            trackingTimeStart: new Date(),
+            isActive: true,
+          });
+        } catch (isActiveError) {
+          // If isActive also doesn't exist, create without both
+          if (isActiveError.message && isActiveError.message.includes("isActive") && isActiveError.message.includes("does not exist")) {
+            console.warn("isActive column doesn't exist yet, creating without it");
+            newTimer = await TrackingTime.create({
+              inspectorId,
+              trackingTimeStart: new Date(),
+            });
+          } else {
+            throw isActiveError;
+          }
+        }
+      } else if (createError.message && createError.message.includes("isActive") && createError.message.includes("does not exist")) {
+        // If only isActive doesn't exist
+        console.warn("isActive column doesn't exist yet, creating without it");
+        try {
+          newTimer = await TrackingTime.create({
+            caseId,
+            inspectorId,
+            trackingTimeStart: new Date(),
+          });
+        } catch (caseIdError) {
+          // If caseId also doesn't exist
+          if (caseIdError.message && caseIdError.message.includes("caseId") && caseIdError.message.includes("does not exist")) {
+            newTimer = await TrackingTime.create({
+              inspectorId,
+              trackingTimeStart: new Date(),
+            });
+          } else {
+            throw caseIdError;
+          }
+        }
       } else {
         throw createError;
       }
@@ -91,7 +165,7 @@ exports.stopTimer = async (req, res) => {
     const { id: inspectorId } = req.user;
 
     // Find active timer for this case
-    // Handle case where caseId column might not exist yet
+    // Handle case where caseId or isActive columns might not exist yet
     let activeTimer;
     try {
       activeTimer = await TrackingTime.findOne({
@@ -102,15 +176,51 @@ exports.stopTimer = async (req, res) => {
         },
       });
     } catch (dbError) {
-      // If column doesn't exist, check without caseId
-      if (dbError.message && dbError.message.includes("column") && dbError.message.includes("does not exist")) {
+      // Handle missing columns gracefully
+      if (dbError.message && dbError.message.includes("caseId") && dbError.message.includes("does not exist")) {
         console.warn("caseId column doesn't exist yet, checking without it");
-        activeTimer = await TrackingTime.findOne({
-          where: {
-            inspectorId,
-            isActive: true,
-          },
-        });
+        try {
+          activeTimer = await TrackingTime.findOne({
+            where: {
+              inspectorId,
+              isActive: true,
+            },
+          });
+        } catch (isActiveError) {
+          if (isActiveError.message && isActiveError.message.includes("isActive") && isActiveError.message.includes("does not exist")) {
+            console.warn("isActive column doesn't exist yet, checking for timer without end time");
+            activeTimer = await TrackingTime.findOne({
+              where: {
+                inspectorId,
+                trackingTimeEnd: null,
+              },
+            });
+          } else {
+            throw isActiveError;
+          }
+        }
+      } else if (dbError.message && dbError.message.includes("isActive") && dbError.message.includes("does not exist")) {
+        console.warn("isActive column doesn't exist yet, checking for timer without end time");
+        try {
+          activeTimer = await TrackingTime.findOne({
+            where: {
+              caseId,
+              inspectorId,
+              trackingTimeEnd: null,
+            },
+          });
+        } catch (caseIdError) {
+          if (caseIdError.message && caseIdError.message.includes("caseId") && caseIdError.message.includes("does not exist")) {
+            activeTimer = await TrackingTime.findOne({
+              where: {
+                inspectorId,
+                trackingTimeEnd: null,
+              },
+            });
+          } else {
+            throw caseIdError;
+          }
+        }
       } else {
         throw dbError;
       }
@@ -123,10 +233,23 @@ exports.stopTimer = async (req, res) => {
 
     // Stop the timer
     const endTime = new Date();
-    await activeTimer.update({
-      trackingTimeEnd: endTime,
-      isActive: false,
-    });
+    try {
+      // Try updating with isActive field
+      await activeTimer.update({
+        trackingTimeEnd: endTime,
+        isActive: false,
+      });
+    } catch (updateError) {
+      // If isActive doesn't exist, update without it
+      if (updateError.message && updateError.message.includes("isActive") && updateError.message.includes("does not exist")) {
+        console.warn("isActive column doesn't exist yet, updating without it");
+        await activeTimer.update({
+          trackingTimeEnd: endTime,
+        });
+      } else {
+        throw updateError;
+      }
+    }
 
     // Calculate duration
     const duration = Math.floor((endTime - new Date(activeTimer.trackingTimeStart)) / 1000); // seconds
@@ -157,7 +280,7 @@ exports.getTimer = async (req, res) => {
     const { id: inspectorId } = req.user;
 
     // Get active timer
-    // Handle case where caseId column might not exist yet
+    // Handle case where caseId or isActive columns might not exist yet
     let activeTimer;
     let completedTimers;
     
@@ -182,23 +305,52 @@ exports.getTimer = async (req, res) => {
         order: [["trackingTimeStart", "DESC"]],
       });
     } catch (dbError) {
-      // If column doesn't exist, query without caseId
-      if (dbError.message && dbError.message.includes("column") && dbError.message.includes("does not exist")) {
-        console.warn("caseId column doesn't exist yet, querying without it");
-        activeTimer = await TrackingTime.findOne({
-          where: {
-            inspectorId,
-            isActive: true,
-          },
-          order: [["trackingTimeStart", "DESC"]],
-        });
-
+      // Handle missing columns - try different combinations
+      const hasCaseIdError = dbError.message && dbError.message.includes("caseId") && dbError.message.includes("does not exist");
+      const hasIsActiveError = dbError.message && dbError.message.includes("isActive") && dbError.message.includes("does not exist");
+      
+      if (hasCaseIdError || hasIsActiveError) {
+        console.warn("Some columns don't exist yet, querying with fallback");
+        
+        // Build where clause without missing columns
+        const whereClause = { inspectorId };
+        if (!hasCaseIdError) {
+          whereClause.caseId = caseId;
+        }
+        
+        // Try with isActive first
+        try {
+          whereClause.isActive = true;
+          activeTimer = await TrackingTime.findOne({
+            where: whereClause,
+            order: [["trackingTimeStart", "DESC"]],
+          });
+        } catch (isActiveErr) {
+          // If isActive doesn't exist, use trackingTimeEnd null
+          if (isActiveErr.message && isActiveErr.message.includes("isActive")) {
+            delete whereClause.isActive;
+            whereClause.trackingTimeEnd = null;
+            activeTimer = await TrackingTime.findOne({
+              where: whereClause,
+              order: [["trackingTimeStart", "DESC"]],
+            });
+          } else {
+            throw isActiveErr;
+          }
+        }
+        
+        // Get completed timers
+        const completedWhere = { inspectorId };
+        if (!hasCaseIdError) {
+          completedWhere.caseId = caseId;
+        }
+        if (!hasIsActiveError) {
+          completedWhere.isActive = false;
+        }
+        completedWhere.trackingTimeEnd = { [Op.ne]: null };
+        
         completedTimers = await TrackingTime.findAll({
-          where: {
-            inspectorId,
-            isActive: false,
-            trackingTimeEnd: { [Op.ne]: null },
-          },
+          where: completedWhere,
           order: [["trackingTimeStart", "DESC"]],
         });
       } else {

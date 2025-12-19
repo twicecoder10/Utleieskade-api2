@@ -1,6 +1,6 @@
 const express = require("express");
 const chatController = require("../controllers/chatController");
-const { authMiddleware } = require("../middlewares/roleMiddleware");
+const { authMiddleware, authorizeRoles } = require("../middlewares/roleMiddleware");
 
 const router = express.Router();
 
@@ -204,5 +204,36 @@ router.get(
 //  *         description: Unauthorized
 //  */
 // router.post("/send-message", authMiddleware, chatController.sendMessage);
+
+/**
+ * @swagger
+ * /chats/case/{caseId}/conversation:
+ *   get:
+ *     summary: Get or create conversation between inspector and tenant for a case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Chat]
+ *     description: Retrieves or creates a conversation between the inspector and the tenant who created the case.
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID
+ *     responses:
+ *       200:
+ *         description: Conversation retrieved successfully
+ *       404:
+ *         description: Case not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/case/:caseId/conversation",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  chatController.getCaseConversation
+);
 
 module.exports = router;

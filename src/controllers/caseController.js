@@ -175,6 +175,44 @@ exports.assignCase = async (req, res) => {
     );
     return responseHandler.send(res);
   } catch (error) {
+    if (error.message && error.message.includes("already claimed")) {
+      responseHandler.setError(400, error.message);
+      return responseHandler.send(res);
+    }
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.releaseCase = async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const { id: inspectorId } = req.user;
+    
+    const updatedCase = await caseService.releaseCase(caseId, inspectorId);
+
+    if (!updatedCase) {
+      responseHandler.setError(404, "Case not found");
+      return responseHandler.send(res);
+    }
+
+    await caseService.logCaseEvent(
+      caseId,
+      "caseReleased",
+      `Case released by inspector`
+    );
+
+    responseHandler.setSuccess(
+      200,
+      "Case released successfully",
+      updatedCase
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    if (error.message && error.message.includes("can only release")) {
+      responseHandler.setError(403, error.message);
+      return responseHandler.send(res);
+    }
     responseHandler.setError(500, error.message);
     return responseHandler.send(res);
   }

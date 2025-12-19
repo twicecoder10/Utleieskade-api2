@@ -390,8 +390,40 @@ router.patch(
 router.patch(
   "/assign/:caseId/to/:inspectorId",
   authMiddleware,
-  authorizeRoles("admin", "sub-admin"),
+  authorizeRoles("admin", "sub-admin", "inspector"),
   caseController.assignCase
+);
+
+/**
+ * @swagger
+ * /cases/release/{caseId}:
+ *   patch:
+ *     summary: Release a case (unclaim it)
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Cases]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unique ID of the case
+ *     responses:
+ *       200:
+ *         description: Case released successfully
+ *       403:
+ *         description: You can only release cases that you have claimed
+ *       404:
+ *         description: Case not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch(
+  "/release/:caseId",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  caseController.releaseCase
 );
 
 /**

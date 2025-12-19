@@ -302,7 +302,26 @@ const assignCase = async (caseId, inspectorId) => {
   });
   if (!inspector) return null;
 
+  // Prevent claiming if case is already assigned to another inspector
+  if (caseInstance.inspectorId && caseInstance.inspectorId !== inspectorId) {
+    throw new Error("Case is already claimed by another inspector");
+  }
+
   caseInstance.inspectorId = inspectorId;
+  await caseInstance.save();
+  return caseInstance;
+};
+
+const releaseCase = async (caseId, inspectorId) => {
+  const caseInstance = await Case.findOne({ where: { caseId } });
+  if (!caseInstance) return null;
+
+  // Only allow the assigned inspector or admin to release
+  if (caseInstance.inspectorId !== inspectorId) {
+    throw new Error("You can only release cases that you have claimed");
+  }
+
+  caseInstance.inspectorId = null;
   await caseInstance.save();
   return caseInstance;
 };
@@ -381,6 +400,7 @@ module.exports = {
   getCaseDetails,
   cancelCase,
   assignCase,
+  releaseCase,
   logCaseEvent,
   getCaseTimeline,
   reportAssessment,

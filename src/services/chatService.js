@@ -231,6 +231,69 @@ const getCommunicationHistory = async (adminId, userId) => {
   };
 };
 
+const getCaseConversation = async (caseId, inspectorId) => {
+  const { Case } = require("../models");
+  
+  // Get the case to find the tenant
+  const caseInstance = await Case.findOne({
+    where: { caseId },
+    include: [
+      {
+        model: User,
+        as: "tenant",
+        attributes: ["userId", "userFirstName", "userLastName", "userProfilePic"],
+      },
+    ],
+  });
+
+  if (!caseInstance) {
+    throw new Error("Case not found");
+  }
+
+  const tenantId = caseInstance.userId;
+  
+  if (!tenantId) {
+    throw new Error("Tenant not found for this case");
+  }
+
+  // Find or create conversation between inspector and tenant
+  const conversation = await findOrCreateConversation(inspectorId, tenantId);
+
+  // Get all messages for this conversation
+  const messages = await Message.findAll({
+    where: { conversationId: conversation.conversationId },
+    include: [
+      {
+        model: User,
+        as: "sender",
+        attributes: [
+          "userId",
+          "userFirstName",
+          "userLastName",
+          "userProfilePic",
+        ],
+      },
+      {
+        model: User,
+        as: "receiver",
+        attributes: [
+          "userId",
+          "userFirstName",
+          "userLastName",
+          "userProfilePic",
+        ],
+      },
+    ],
+    order: [["sentAt", "ASC"]],
+  });
+
+  return {
+    conversation,
+    messages: messages || [],
+    tenant: caseInstance.tenant,
+  };
+};
+
 module.exports = {
   getUserChats,
   sendMessage,
@@ -239,4 +302,5 @@ module.exports = {
   getAdminChats,
   getChattableUsers,
   getCommunicationHistory,
+  getCaseConversation,
 };

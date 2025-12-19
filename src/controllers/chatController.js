@@ -59,6 +59,26 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
+exports.getCaseConversation = async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const { id: inspectorId } = req.user;
+    
+    const conversationData = await chatService.getCaseConversation(caseId, inspectorId);
+
+    responseHandler.setSuccess(
+      200,
+      "Conversation retrieved successfully",
+      conversationData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error getting case conversation: ", error);
+    responseHandler.setError(500, error.message || "Internal server error!");
+    return responseHandler.send(res);
+  }
+};
+
 exports.getAdminChats = async (req, res) => {
   try {
     const adminId = req.user.id;
