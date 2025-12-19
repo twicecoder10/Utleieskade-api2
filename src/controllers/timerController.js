@@ -135,7 +135,7 @@ exports.startTimer = async (req, res) => {
     responseHandler.setSuccess(200, "Timer started successfully", {
       timerId: newTimer.trackingId,
       startTime: newTimer.trackingTimeStart,
-      isActive: true,
+      isActive: newTimer.isActive !== undefined ? newTimer.isActive : (newTimer.trackingTimeEnd === null), // Reflect isActive based on available data
     });
     return responseHandler.send(res);
   } catch (error) {
