@@ -803,6 +803,97 @@ router.get(
 
 /**
  * @swagger
+ * /inspectors/cases/{caseId}/timer/start:
+ *   post:
+ *     summary: Start work timer for a case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID
+ *     responses:
+ *       200:
+ *         description: Timer started successfully
+ *       400:
+ *         description: Timer is already running
+ *       404:
+ *         description: Case not found or not assigned
+ *       500:
+ *         description: Internal server error
+ */
+const timerController = require("../controllers/timerController");
+router.post(
+  "/cases/:caseId/timer/start",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  timerController.startTimer
+);
+
+/**
+ * @swagger
+ * /inspectors/cases/{caseId}/timer/stop:
+ *   post:
+ *     summary: Stop work timer for a case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID
+ *     responses:
+ *       200:
+ *         description: Timer stopped successfully
+ *       404:
+ *         description: No active timer found
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/cases/:caseId/timer/stop",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  timerController.stopTimer
+);
+
+/**
+ * @swagger
+ * /inspectors/cases/{caseId}/timer:
+ *   get:
+ *     summary: Get work timer data for a case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID
+ *     responses:
+ *       200:
+ *         description: Timer data retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/cases/:caseId/timer",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  timerController.getTimer
+);
+
+/**
+ * @swagger
  * /inspectors/password:
  *   put:
  *     summary: Change inspector password

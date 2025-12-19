@@ -9,9 +9,11 @@ const TrackingTime = sequelize.define(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    trackingTimeStart: { type: DataTypes.TIME, allowNull: false },
-    trackingTimeEnd: { type: DataTypes.TIME, allowNull: false },
+    caseId: { type: DataTypes.STRING, allowNull: true },
+    trackingTimeStart: { type: DataTypes.DATE, allowNull: true },
+    trackingTimeEnd: { type: DataTypes.DATE, allowNull: true },
     inspectorId: { type: DataTypes.STRING, allowNull: false },
+    isActive: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
   {
     tableName: "TrackingTime",
