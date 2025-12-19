@@ -570,7 +570,8 @@ Refund.belongsTo(Case, {
   onDelete: "CASCADE",
 });
 
-TrackingTime.belongsTo(User, { foreignKey: "userId", as: "inspector" });
+TrackingTime.belongsTo(User, { foreignKey: "inspectorId", as: "inspector" });
+TrackingTime.belongsTo(Case, { foreignKey: "caseId", as: "case" });
 
 NotificationSettings.belongsTo(User, {
   foreignKey: "userId",
