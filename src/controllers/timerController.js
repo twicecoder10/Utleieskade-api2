@@ -82,24 +82,48 @@ exports.startTimer = async (req, res) => {
 
     // Create new timer session
     // Handle case where caseId or isActive columns might not exist yet
+    // Use raw SQL to avoid Sequelize model validation issues
+    const sequelize = TrackingTime.sequelize;
+    const startTime = new Date();
+    
     let newTimer;
-    const timerAttempts = [
-      // Attempt 1: Try with all fields
-      { caseId, inspectorId, trackingTimeStart: new Date(), isActive: true },
+    let timerId;
+    
+    // Try to create using raw SQL with different column combinations
+    const attempts = [
+      // Attempt 1: With caseId and isActive
+      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "isActive", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $5) RETURNING *`,
       // Attempt 2: Without isActive
-      { caseId, inspectorId, trackingTimeStart: new Date() },
+      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $4) RETURNING *`,
       // Attempt 3: Without caseId and isActive
-      { inspectorId, trackingTimeStart: new Date() },
+      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, $3, $3) RETURNING *`,
+    ];
+    
+    const attemptParams = [
+      [caseId, inspectorId, startTime, true, startTime],
+      [caseId, inspectorId, startTime, startTime],
+      [inspectorId, startTime, startTime],
     ];
     
     let lastError = null;
-    for (let i = 0; i < timerAttempts.length; i++) {
+    for (let i = 0; i < attempts.length; i++) {
       try {
-        const attemptData = timerAttempts[i];
-        console.log(`Attempting to create timer (attempt ${i + 1}/${timerAttempts.length}) with fields:`, Object.keys(attemptData));
-        newTimer = await TrackingTime.create(attemptData);
-        console.log(`✅ Timer created successfully on attempt ${i + 1}`);
-        break;
+        console.log(`Attempting to create timer (attempt ${i + 1}/${attempts.length}) with SQL`);
+        const [results] = await sequelize.query(attempts[i], {
+          bind: attemptParams[i],
+          type: sequelize.QueryTypes.INSERT,
+        });
+        
+        // Fetch the created record
+        timerId = results[0]?.trackingId || results[0]?.trackingId;
+        if (timerId) {
+          newTimer = await TrackingTime.findByPk(timerId);
+          console.log(`✅ Timer created successfully on attempt ${i + 1}`);
+          break;
+        }
       } catch (createError) {
         const errorMsg = createError.message || String(createError);
         const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column") || errorMsg.includes("of relation"));
@@ -108,28 +132,35 @@ exports.startTimer = async (req, res) => {
         console.warn(`Attempt ${i + 1} failed:`, errorMsg);
         lastError = createError;
         
-        // If this is the last attempt, throw the error
-        if (i === timerAttempts.length - 1) {
-          // Check if it's a column error - if so, we've tried all combinations
-          if (hasCaseIdError || hasIsActiveError) {
-            console.error("All timer creation attempts failed due to missing columns");
-            throw new Error(`Failed to create timer: Database schema missing required columns. Please add 'caseId' and/or 'isActive' columns to TrackingTime table. Original error: ${errorMsg}`);
-          } else {
-            // If it's not a column error, throw the original error
-            throw createError;
+        // If this is the last attempt, try one more time with minimal fields
+        if (i === attempts.length - 1) {
+          // Last resort: try with only inspectorId and trackingTimeStart (no caseId, no isActive)
+          try {
+            console.log("Trying final fallback with minimal fields");
+            const [finalResults] = await sequelize.query(
+              `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
+               VALUES (gen_random_uuid(), $1, $2, $3, $3) RETURNING *`,
+              {
+                bind: [inspectorId, startTime, startTime],
+                type: sequelize.QueryTypes.INSERT,
+              }
+            );
+            timerId = finalResults[0]?.trackingId || finalResults[0]?.trackingId;
+            if (timerId) {
+              newTimer = await TrackingTime.findByPk(timerId);
+              console.log(`✅ Timer created successfully with final fallback`);
+              break;
+            }
+          } catch (finalError) {
+            console.error("Final fallback also failed:", finalError.message);
+            throw new Error(`Failed to create timer: ${finalError.message}`);
           }
-        }
-        
-        // If it's not a column error and we have more attempts, continue
-        if (!hasCaseIdError && !hasIsActiveError) {
-          // This might be a different error, but let's try the next attempt anyway
-          continue;
         }
       }
     }
     
     if (!newTimer) {
-      throw new Error(`Failed to create timer after ${timerAttempts.length} attempts: ${lastError?.message || 'Unknown error'}`);
+      throw new Error(`Failed to create timer after all attempts: ${lastError?.message || 'Unknown error'}`);
     }
 
     responseHandler.setSuccess(200, "Timer started successfully", {
