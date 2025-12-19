@@ -933,4 +933,255 @@ router.put(
   inspectorController.changePassword
 );
 
+/**
+ * @swagger
+ * /inspectors/cases/{caseId}/claim:
+ *   post:
+ *     summary: Claim a case (assign to self)
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID to claim
+ *     responses:
+ *       200:
+ *         description: Case claimed successfully
+ *       400:
+ *         description: Case already claimed
+ *       404:
+ *         description: Case not found
+ *       500:
+ *         description: Internal server error
+ */
+const caseController = require("../controllers/caseController");
+router.post(
+  "/cases/:caseId/claim",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  (req, res, next) => {
+    // Wrap assignCase to use current inspector's ID
+    req.params.inspectorId = req.user.id;
+    caseController.assignCase(req, res, next);
+  }
+);
+
+/**
+ * @swagger
+ * /inspectors/cases/{caseId}/cancel:
+ *   post:
+ *     summary: Cancel a case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID to cancel
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - cancellationReason
+ *             properties:
+ *               cancellationReason:
+ *                 type: string
+ *                 example: "Unable to complete due to scheduling conflicts"
+ *     responses:
+ *       200:
+ *         description: Case cancelled successfully
+ *       400:
+ *         description: Cancellation reason required
+ *       404:
+ *         description: Case not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/cases/:caseId/cancel",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  caseController.cancelCase
+);
+
+/**
+ * @swagger
+ * /inspectors/cases/{caseId}/hold:
+ *   put:
+ *     summary: Put a case on hold
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID to put on hold
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - holdReason
+ *             properties:
+ *               holdReason:
+ *                 type: string
+ *                 example: "Waiting for tenant availability"
+ *     responses:
+ *       200:
+ *         description: Case put on hold successfully
+ *       400:
+ *         description: Hold reason required
+ *       404:
+ *         description: Case not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put(
+  "/cases/:caseId/hold",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  (req, res, next) => {
+    // Use updateCaseStatus to set status to "on-hold"
+    req.params.status = "on-hold";
+    caseController.updateCaseStatus(req, res, next);
+  }
+);
+
+/**
+ * @swagger
+ * /inspectors/cases/{caseId}/release:
+ *   put:
+ *     summary: Release a case (unclaim it)
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID to release
+ *     responses:
+ *       200:
+ *         description: Case released successfully
+ *       403:
+ *         description: You can only release cases that you have claimed
+ *       404:
+ *         description: Case not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put(
+  "/cases/:caseId/release",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  caseController.releaseCase
+);
+
+/**
+ * @swagger
+ * /inspectors/cases/{caseId}/report/preview:
+ *   get:
+ *     summary: Get report preview for a case
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: caseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The case ID
+ *     responses:
+ *       200:
+ *         description: Report preview retrieved successfully
+ *       404:
+ *         description: Case or report not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/cases/:caseId/report/preview",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getReportPreview
+);
+
+/**
+ * @swagger
+ * /inspectors/reports/{reportId}:
+ *   delete:
+ *     summary: Delete a report
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: reportId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The report ID to delete
+ *     responses:
+ *       200:
+ *         description: Report deleted successfully
+ *       404:
+ *         description: Report not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete(
+  "/reports/:reportId",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.deleteReport
+);
+
+/**
+ * @swagger
+ * /inspectors/reports/{reportId}/pdf:
+ *   get:
+ *     summary: Get report PDF
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: reportId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The report ID
+ *     responses:
+ *       200:
+ *         description: PDF retrieved successfully
+ *       404:
+ *         description: Report not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/reports/:reportId/pdf",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.getReportPdf
+);
+
 module.exports = router;

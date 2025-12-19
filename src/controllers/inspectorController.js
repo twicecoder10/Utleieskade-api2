@@ -467,3 +467,78 @@ exports.getInspectorReports = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.getReportPreview = async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const { id: inspectorId } = req.user;
+
+    const reportPreview = await inspectorService.getReportPreview(caseId, inspectorId);
+
+    if (!reportPreview) {
+      responseHandler.setError(404, "Report not found for this case");
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, "Report preview retrieved successfully", reportPreview);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching report preview:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.deleteReport = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { id: inspectorId } = req.user;
+
+    const deleted = await inspectorService.deleteReport(reportId, inspectorId);
+
+    if (!deleted) {
+      responseHandler.setError(404, "Report not found or you don't have permission to delete it");
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, "Report deleted successfully");
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error deleting report:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
+exports.getReportPdf = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { id: inspectorId } = req.user;
+
+    const pdfData = await inspectorService.getReportPdf(reportId, inspectorId);
+
+    if (!pdfData) {
+      responseHandler.setError(404, "Report not found or you don't have permission to access it");
+      return responseHandler.send(res);
+    }
+
+    // If pdfData is a URL, redirect to it
+    if (typeof pdfData === 'string' && pdfData.startsWith('http')) {
+      return res.redirect(pdfData);
+    }
+
+    // If pdfData is a buffer, send it as PDF
+    if (Buffer.isBuffer(pdfData)) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=report-${reportId.substring(0, 8)}.pdf`);
+      return res.send(pdfData);
+    }
+
+    responseHandler.setError(500, "Invalid PDF data format");
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching report PDF:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};

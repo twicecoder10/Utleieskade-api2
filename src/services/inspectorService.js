@@ -698,4 +698,7 @@ module.exports = {
   updateInspectorSettings,
   deleteInspector,
   getInspectorReports,
+  getReportPreview,
+  deleteReport,
+  getReportPdf,
 };
