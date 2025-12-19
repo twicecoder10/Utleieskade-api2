@@ -423,17 +423,56 @@ const reportAssessment = async (reportData) => {
     }
 
     // Create assessment summary if provided
+    // Use findOrCreate to avoid duplicate key errors
     if (summary) {
-      await AssessmentSummary.create({
-        reportId: newReport.reportId,
-        totalHours: summary.totalHours || 0,
-        totalSumMaterials: summary.totalSumMaterials || 0,
-        totalSumLabor: summary.totalSumLabor || 0,
-        sumExclVAT: summary.sumExclVAT || 0,
-        vat: summary.vat || 0,
-        sumInclVAT: summary.sumInclVAT || 0,
-        total: summary.total || 0,
-      });
+      try {
+        const [assessmentSummary, created] = await AssessmentSummary.findOrCreate({
+          where: { reportId: newReport.reportId },
+          defaults: {
+            reportId: newReport.reportId,
+            totalHours: summary.totalHours || 0,
+            totalSumMaterials: summary.totalSumMaterials || 0,
+            totalSumLabor: summary.totalSumLabor || 0,
+            sumExclVAT: summary.sumExclVAT || 0,
+            vat: summary.vat || 0,
+            sumInclVAT: summary.sumInclVAT || 0,
+            total: summary.total || 0,
+          },
+        });
+
+        // If it already exists, update it instead
+        if (!created) {
+          await assessmentSummary.update({
+            totalHours: summary.totalHours || 0,
+            totalSumMaterials: summary.totalSumMaterials || 0,
+            totalSumLabor: summary.totalSumLabor || 0,
+            sumExclVAT: summary.sumExclVAT || 0,
+            vat: summary.vat || 0,
+            sumInclVAT: summary.sumInclVAT || 0,
+            total: summary.total || 0,
+          });
+        }
+      } catch (summaryError) {
+        console.error("Error creating/updating assessment summary:", summaryError);
+        // If findOrCreate fails, try to delete existing and create new
+        try {
+          await AssessmentSummary.destroy({ where: { reportId: newReport.reportId } });
+          await AssessmentSummary.create({
+            reportId: newReport.reportId,
+            totalHours: summary.totalHours || 0,
+            totalSumMaterials: summary.totalSumMaterials || 0,
+            totalSumLabor: summary.totalSumLabor || 0,
+            sumExclVAT: summary.sumExclVAT || 0,
+            vat: summary.vat || 0,
+            sumInclVAT: summary.sumInclVAT || 0,
+            total: summary.total || 0,
+          });
+        } catch (fallbackError) {
+          console.error("Error in fallback summary creation:", fallbackError);
+          // Don't throw - allow report to be created even if summary fails
+          console.warn("Continuing without assessment summary due to error");
+        }
+      }
     }
 
     // Update case status to completed
