@@ -459,7 +459,7 @@ User.hasMany(InspectorPayment, {
   as: "inspectorPayments",
 });
 User.hasMany(TrackingTime, {
-  foreignKey: "userId",
+  foreignKey: "inspectorId",
   as: "inspectorTrackingTime",
 });
 User.hasOne(BankDetails, {
