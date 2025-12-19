@@ -801,4 +801,45 @@ router.get(
   inspectorController.getInspectorReports
 );
 
+/**
+ * @swagger
+ * /inspectors/password:
+ *   put:
+ *     summary: Change inspector password
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     description: Allows an inspector to change their password.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: "oldpassword123"
+ *               newPassword:
+ *                 type: string
+ *                 example: "newpassword123"
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Current password and new password are required, or new password is too short
+ *       403:
+ *         description: Current password is incorrect
+ *       404:
+ *         description: Inspector not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put(
+  "/password",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.changePassword
+);
+
 module.exports = router;

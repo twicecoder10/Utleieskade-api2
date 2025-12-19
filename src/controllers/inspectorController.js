@@ -357,6 +357,50 @@ exports.updateInspectorSettings = async (req, res) => {
   }
 };
 
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const { id: inspectorId } = req.user;
+
+    if (!currentPassword || !newPassword) {
+      responseHandler.setError(400, "Current password and new password are required");
+      return responseHandler.send(res);
+    }
+
+    if (newPassword.length < 6) {
+      responseHandler.setError(400, "New password must be at least 6 characters");
+      return responseHandler.send(res);
+    }
+
+    const user = await inspectorService.getInspectorById(inspectorId, true);
+
+    if (!user) {
+      responseHandler.setError(404, "Inspector not found");
+      return responseHandler.send(res);
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.userPassword
+    );
+
+    if (!isPasswordValid) {
+      responseHandler.setError(403, "Current password is incorrect");
+      return responseHandler.send(res);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await inspectorService.updateInspectorPassword(inspectorId, hashedPassword);
+
+    responseHandler.setSuccess(200, "Password changed successfully");
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error changing password:", error);
+    responseHandler.setError(500, error.message || "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
 exports.deleteInspector = async (req, res) => {
   try {
     const deletedInspector = await inspectorService.deleteInspector(

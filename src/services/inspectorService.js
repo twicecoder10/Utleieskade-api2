@@ -128,12 +128,14 @@ const getInspectorDasboard = async (inspectorId) => {
   }
 };
 
-const getInspectorById = async (inspectorId) => {
+const getInspectorById = async (inspectorId, includePassword = false) => {
+  const attributes = includePassword 
+    ? {} 
+    : { exclude: ["userPassword"] };
+    
   return await User.findOne({
     where: { userId: inspectorId, userType: "inspector" },
-    attributes: {
-      exclude: ["userPassword"],
-    },
+    attributes,
     include: [
       {
         model: Expertise,
@@ -143,6 +145,13 @@ const getInspectorById = async (inspectorId) => {
       },
     ],
   });
+};
+
+const updateInspectorPassword = async (inspectorId, hashedPassword) => {
+  return await User.update(
+    { userPassword: hashedPassword },
+    { where: { userId: inspectorId, userType: "inspector" } }
+  );
 };
 
 const getAllInspectors = async ({ search, page = 1, limit = 10 }) => {
@@ -622,6 +631,7 @@ module.exports = {
   createInspector,
   exportInspectors,
   deactivateInspector,
+  updateInspectorPassword,
   getInspectorDasboard,
   getInspectorCases,
   getInspectorEarnings,
