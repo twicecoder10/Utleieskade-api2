@@ -44,6 +44,18 @@ const PORT = process.env.PORT || 3000;
         } catch (migrationError) {
           console.error("⚠️ UUID migration error (non-fatal):", migrationError.message);
         }
+        // Run Case Status Enum fix
+        try {
+          const fixCaseStatusEnum = require("./src/utils/fixCaseStatusEnum");
+          const enumFixResult = await fixCaseStatusEnum();
+          if (enumFixResult.success) {
+            console.log("✅ Case Status Enum check completed:", enumFixResult.message);
+          } else {
+            console.warn("⚠️ Case Status Enum fix warning (non-fatal):", enumFixResult.message);
+          }
+        } catch (enumError) {
+          console.error("⚠️ Enum fix error (non-fatal):", enumError.message);
+        }
       })
       .catch((error) => {
         console.error("⚠️ Database connection failed (server still running):", error?.message || error);

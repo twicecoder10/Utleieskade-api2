@@ -46,7 +46,7 @@ const getInspectorDasboard = async (inspectorId) => {
     where: {
       inspectorId,
         caseStatus: {
-          [Op.in]: ["open", "in-progress", "on-hold", "pending"],
+          [Op.in]: ["open", "in-progress", "on-hold"],
         },
       },
     }) || 0;
@@ -63,12 +63,12 @@ const getInspectorDasboard = async (inspectorId) => {
       totalEarnings = 0;
     }
 
-    // Get prioritized cases (active cases with deadlines - open, in-progress, on-hold, pending)
+    // Get prioritized cases (active cases with deadlines - open, in-progress, on-hold)
     const prioritizedCasesRaw = await Case.findAll({
       where: {
         inspectorId,
         caseStatus: {
-          [Op.in]: ["open", "in-progress", "on-hold", "pending"],
+          [Op.in]: ["open", "in-progress", "on-hold"],
         },
       },
       attributes: [

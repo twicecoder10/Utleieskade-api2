@@ -393,6 +393,28 @@ router.post(
 
 /**
  * @swagger
+ * /admins/fix-case-status-enum:
+ *   post:
+ *     summary: Fix Case Status Enum - Add 'pending' and update invalid cases
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     description: Fixes the database enum by adding 'pending' status and updates any cases with invalid statuses
+ *     responses:
+ *       200:
+ *         description: Enum fixed successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/fix-case-status-enum",
+  authMiddleware,
+  authorizeRoles("admin"),
+  adminController.fixCaseStatusEnum
+);
+
+/**
+ * @swagger
  * /admins/export-dashboard:
  *   get:
  *     summary: Export the admin dashboard data as CSV or PDF

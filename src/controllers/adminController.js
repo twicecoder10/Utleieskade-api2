@@ -251,6 +251,24 @@ exports.getPerformanceMetrics = async (req, res) => {
 };
 
 // Comprehensive migration endpoint to fix ALL UUID/STRING mismatches
+exports.fixCaseStatusEnum = async (req, res) => {
+  try {
+    const fixCaseStatusEnum = require("../utils/fixCaseStatusEnum");
+    const result = await fixCaseStatusEnum();
+    
+    if (result.success) {
+      responseHandler.setSuccess(200, result.message || "Case status enum fixed successfully", result);
+    } else {
+      responseHandler.setError(500, result.message || "Failed to fix case status enum");
+    }
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fixing case status enum:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
+
 exports.fixPropertyUuid = async (req, res) => {
   try {
     const { migrateAllUuidMismatches } = require("../models");

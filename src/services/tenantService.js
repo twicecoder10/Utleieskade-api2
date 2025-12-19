@@ -202,123 +202,239 @@ const getTenantDashboard = async (tenantId) => {
     attributes: ["userFirstName", "userLastName"],
   });
 
-  const activeCasesCount = await Case.count({
-    where: {
-      userId: tenantId,
-      caseStatus: { [Op.in]: ["open"] },
-    },
-  });
+  // Use raw queries with text casting to handle invalid enum values gracefully
+  const isPostgres = Case.sequelize.getDialect() === "postgres";
+  
+  try {
+    // Active cases count - using raw query to handle enum issues
+    const activeCasesCount = isPostgres
+      ? await Case.sequelize.query(
+          `SELECT COUNT(*) as count FROM "Case" 
+           WHERE "userId" = :userId 
+           AND "caseStatus"::text = 'open'`,
+          {
+            replacements: { userId: tenantId },
+            type: Case.sequelize.QueryTypes.SELECT,
+          }
+        ).then((result) => parseInt(result[0]?.count || 0))
+      : await Case.count({
+          where: {
+            userId: tenantId,
+            caseStatus: { [Op.in]: ["open"] },
+          },
+        });
 
-  const requiresAttentionCount = await Case.count({
-    where: {
-      userId: tenantId,
-      caseStatus: { [Op.in]: ["open"] },
-      caseUrgencyLevel: "high",
-    },
-  });
+    // Requires attention count
+    const requiresAttentionCount = isPostgres
+      ? await Case.sequelize.query(
+          `SELECT COUNT(*) as count FROM "Case" 
+           WHERE "userId" = :userId 
+           AND "caseStatus"::text = 'open'
+           AND "caseUrgencyLevel" = 'high'`,
+          {
+            replacements: { userId: tenantId },
+            type: Case.sequelize.QueryTypes.SELECT,
+          }
+        ).then((result) => parseInt(result[0]?.count || 0))
+      : await Case.count({
+          where: {
+            userId: tenantId,
+            caseStatus: { [Op.in]: ["open"] },
+            caseUrgencyLevel: "high",
+          },
+        });
 
-  const resolvedCasesCount = await Case.count({
-    where: {
-      userId: tenantId,
-      caseStatus: "completed",
-      // caseCompletedDate: {
-      //   [Op.gte]: Sequelize.literal("DATE_SUB(NOW(), INTERVAL 30 DAY)"),
-      // },
-    },
-  });
+    // Resolved cases count
+    const resolvedCasesCount = isPostgres
+      ? await Case.sequelize.query(
+          `SELECT COUNT(*) as count FROM "Case" 
+           WHERE "userId" = :userId 
+           AND "caseStatus"::text = 'completed'`,
+          {
+            replacements: { userId: tenantId },
+            type: Case.sequelize.QueryTypes.SELECT,
+          }
+        ).then((result) => parseInt(result[0]?.count || 0))
+      : await Case.count({
+          where: {
+            userId: tenantId,
+            caseStatus: "completed",
+          },
+        });
 
-  // Get scheduled inspections (cases with deadlines or assigned inspector)
-  const scheduledInspectionsCount = await Case.count({
-    where: {
-      userId: tenantId,
-      caseStatus: { [Op.in]: ["open", "pending", "in-progress"] },
-      [Op.or]: [
-        { caseDeadline: { [Op.ne]: null } },
-        { inspectorId: { [Op.ne]: null } }
-      ],
-    },
-  });
+    // Scheduled inspections count
+    const scheduledInspectionsCount = isPostgres
+      ? await Case.sequelize.query(
+          `SELECT COUNT(*) as count FROM "Case" 
+           WHERE "userId" = :userId 
+           AND "caseStatus"::text IN ('open', 'in-progress')
+           AND ("caseDeadline" IS NOT NULL OR "inspectorId" IS NOT NULL)`,
+          {
+            replacements: { userId: tenantId },
+            type: Case.sequelize.QueryTypes.SELECT,
+          }
+        ).then((result) => parseInt(result[0]?.count || 0))
+      : await Case.count({
+          where: {
+            userId: tenantId,
+            caseStatus: { [Op.in]: ["open", "in-progress"] },
+            [Op.or]: [
+              { caseDeadline: { [Op.ne]: null } },
+              { inspectorId: { [Op.ne]: null } }
+            ],
+          },
+        });
 
-  // Get next upcoming inspection (case with nearest deadline)
-  const nextInspectionCase = await Case.findOne({
-    where: {
-      userId: tenantId,
-      caseStatus: { [Op.in]: ["open", "pending", "in-progress"] },
-      caseDeadline: { [Op.gte]: new Date() },
-    },
-    attributes: ["caseId", "caseDeadline"],
-    order: [["caseDeadline", "ASC"]],
-  });
-
-  // Format next inspection date
-  let nextInspection = "No upcoming inspections";
-  if (nextInspectionCase && nextInspectionCase.caseDeadline) {
-    const inspectionDate = new Date(nextInspectionCase.caseDeadline);
-    const now = new Date();
-    const diff = inspectionDate - now;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    // Next inspection case
+    const nextInspectionResult = isPostgres
+      ? await Case.sequelize.query(
+          `SELECT "caseId", "caseDeadline" FROM "Case" 
+           WHERE "userId" = :userId 
+           AND "caseStatus"::text IN ('open', 'in-progress')
+           AND "caseDeadline" >= :now
+           ORDER BY "caseDeadline" ASC
+           LIMIT 1`,
+          {
+            replacements: { userId: tenantId, now: new Date() },
+            type: Case.sequelize.QueryTypes.SELECT,
+          }
+        )
+      : await Case.findOne({
+          where: {
+            userId: tenantId,
+            caseStatus: { [Op.in]: ["open", "in-progress"] },
+            caseDeadline: { [Op.gte]: new Date() },
+          },
+          attributes: ["caseId", "caseDeadline"],
+          order: [["caseDeadline", "ASC"]],
+        });
     
-    if (days === 0) {
-      nextInspection = "Today";
-    } else if (days === 1) {
-      nextInspection = "Tomorrow";
-    } else if (days < 7) {
-      nextInspection = `In ${days} days`;
-    } else {
-      nextInspection = inspectionDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+    const nextInspectionCase = isPostgres ? (nextInspectionResult[0] || null) : nextInspectionResult;
+
+    // Format next inspection date
+    let nextInspection = "No upcoming inspections";
+    if (nextInspectionCase && nextInspectionCase.caseDeadline) {
+      const inspectionDate = new Date(nextInspectionCase.caseDeadline);
+      const now = new Date();
+      const diff = inspectionDate - now;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      
+      if (days === 0) {
+        nextInspection = "Today";
+      } else if (days === 1) {
+        nextInspection = "Tomorrow";
+      } else if (days < 7) {
+        nextInspection = `In ${days} days`;
+      } else {
+        nextInspection = inspectionDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
     }
+
+    // Get cases with deadlines for time remaining calculation
+    const casesWithDeadlinesResult = isPostgres
+      ? await Case.sequelize.query(
+          `SELECT "caseId", "caseDeadline" FROM "Case" 
+           WHERE "userId" = :userId 
+           AND "caseStatus"::text IN ('open', 'on-hold', 'in-progress')
+           AND "caseDeadline" IS NOT NULL
+           LIMIT 10`,
+          {
+            replacements: { userId: tenantId },
+            type: Case.sequelize.QueryTypes.SELECT,
+          }
+        )
+      : await Case.findAll({
+          where: {
+            userId: tenantId,
+            caseStatus: { [Op.in]: ["open", "on-hold", "in-progress"] },
+            caseDeadline: { [Op.ne]: null },
+          },
+          attributes: ["caseId", "caseDeadline"],
+          limit: 10,
+        });
+    
+    const casesWithDeadlines = isPostgres ? casesWithDeadlinesResult : casesWithDeadlinesResult;
+
+    // Helper function to calculate time remaining
+    const calculateTimeRemaining = (deadline) => {
+      if (!deadline) return null;
+      const now = new Date();
+      const deadlineDate = new Date(deadline);
+      const diff = deadlineDate - now;
+      
+      if (diff <= 0) return { expired: true, days: 0, hours: 0, minutes: 0 };
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      return { expired: false, days, hours, minutes };
+    };
+
+    const casesWithTimeRemaining = casesWithDeadlines.map((caseItem) => ({
+      caseId: caseItem.caseId,
+      timeRemaining: calculateTimeRemaining(caseItem.caseDeadline),
+    }));
+
+    return {
+      welcomeMessage: `Welcome back ${tenant?.userFirstName || "User"} 👋`,
+      activeCases: {
+        count: activeCasesCount,
+        requiresAttention: requiresAttentionCount,
+      },
+      resolvedIssues: {
+        count: resolvedCasesCount,
+        // last30Days: true,
+      },
+      scheduledInspections: scheduledInspectionsCount,
+      nextInspection: nextInspection,
+      casesWithTimeRemaining: casesWithTimeRemaining,
+    };
+  } catch (error) {
+    // Handle enum errors gracefully
+    if (error.message && error.message.includes('enum') && error.message.includes('pending')) {
+      console.error("⚠️  Database enum error detected. Cases with 'pending' status exist but enum doesn't support it.");
+      console.error("🔧 Attempting to auto-fix the enum...");
+      
+      try {
+        // Try to fix the enum automatically
+        const fixCaseStatusEnum = require("../utils/fixCaseStatusEnum");
+        const fixResult = await fixCaseStatusEnum();
+        
+        if (fixResult.success) {
+          console.log("✅ Enum fixed successfully, retrying dashboard query...");
+          // Retry the dashboard query after fixing
+          return await getTenantDashboard(tenantId);
+        } else {
+          console.error("❌ Failed to auto-fix enum:", fixResult.message);
+        }
+      } catch (fixError) {
+        console.error("❌ Error during auto-fix:", fixError.message);
+      }
+      
+      console.error("💡 Manual fix: Call POST /admins/fix-case-status-enum or run migration");
+      
+      // Return safe defaults
+      return {
+        welcomeMessage: `Welcome back ${tenant?.userFirstName || "User"} 👋`,
+        activeCases: {
+          count: 0,
+          requiresAttention: 0,
+        },
+        resolvedIssues: {
+          count: 0,
+        },
+        scheduledInspections: 0,
+        nextInspection: "No upcoming inspections",
+        casesWithTimeRemaining: [],
+      };
+    }
+    throw error;
   }
-
-  // Get cases with deadlines for time remaining calculation
-  const casesWithDeadlines = await Case.findAll({
-    where: {
-      userId: tenantId,
-      caseStatus: { [Op.in]: ["open", "pending", "on-hold"] },
-      caseDeadline: { [Op.ne]: null },
-    },
-    attributes: ["caseId", "caseDeadline"],
-    limit: 10,
-  });
-
-  // Helper function to calculate time remaining
-  const calculateTimeRemaining = (deadline) => {
-    if (!deadline) return null;
-    const now = new Date();
-    const deadlineDate = new Date(deadline);
-    const diff = deadlineDate - now;
-    
-    if (diff <= 0) return { expired: true, days: 0, hours: 0, minutes: 0 };
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    return { expired: false, days, hours, minutes };
-  };
-
-  const casesWithTimeRemaining = casesWithDeadlines.map((caseItem) => ({
-    caseId: caseItem.caseId,
-    timeRemaining: calculateTimeRemaining(caseItem.caseDeadline),
-  }));
-
-  return {
-    welcomeMessage: `Welcome back ${tenant?.userFirstName || "User"} 👋`,
-    activeCases: {
-      count: activeCasesCount,
-      requiresAttention: requiresAttentionCount,
-    },
-    resolvedIssues: {
-      count: resolvedCasesCount,
-      // last30Days: true,
-    },
-    scheduledInspections: scheduledInspectionsCount,
-    nextInspection: nextInspection,
-    casesWithTimeRemaining: casesWithTimeRemaining,
-  };
 };
 
 const getTenantCases = async (
