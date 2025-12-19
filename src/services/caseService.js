@@ -354,45 +354,107 @@ const logCaseEvent = async (caseId, eventType, eventDescription) => {
 };
 
 const reportAssessment = async (reportData) => {
-  const {
-    inspectorId,
-    caseId,
-    reportDescription,
-    photos = [],
-    items = [],
-    summary,
-  } = reportData;
+  try {
+    const {
+      inspectorId,
+      caseId,
+      reportDescription,
+      photos = [],
+      items = [],
+      summary,
+    } = reportData;
 
-  const newReport = await Report.create({
-    inspectorId,
-    caseId,
-    reportDescription,
-  });
+    // Validate required fields
+    if (!inspectorId) {
+      throw new Error("Inspector ID is required");
+    }
+    if (!caseId) {
+      throw new Error("Case ID is required");
+    }
 
-  if (photos.length > 0) {
-    const reportPhotos = photos.map((photo) => ({
-      reportId: newReport.reportId,
-      photoUrl: photo.photoUrl,
-    }));
-    await ReportPhoto.bulkCreate(reportPhotos);
-  }
-
-  if (items.length > 0) {
-    const formattedItems = items.map((item) => ({
-      ...item,
-      reportId: newReport.reportId,
-    }));
-    await AssessmentItem.bulkCreate(formattedItems);
-  }
-
-  if (summary) {
-    await AssessmentSummary.create({
-      reportId: newReport.reportId,
-      ...summary,
+    // Verify case exists and is assigned to this inspector
+    const caseItem = await Case.findOne({
+      where: { caseId, inspectorId },
     });
-  }
 
-  return newReport;
+    if (!caseItem) {
+      throw new Error("Case not found or not assigned to you");
+    }
+
+    // Create the report
+    const newReport = await Report.create({
+      inspectorId,
+      caseId,
+      reportDescription: reportDescription || "",
+    });
+
+    if (!newReport || !newReport.reportId) {
+      throw new Error("Failed to create report");
+    }
+
+    // Create report photos if provided
+    if (photos && Array.isArray(photos) && photos.length > 0) {
+      const reportPhotos = photos
+        .filter((photo) => photo && photo.photoUrl)
+        .map((photo) => ({
+          reportId: newReport.reportId,
+          photoUrl: photo.photoUrl,
+        }));
+      
+      if (reportPhotos.length > 0) {
+        await ReportPhoto.bulkCreate(reportPhotos);
+      }
+    }
+
+    // Create assessment items if provided
+    if (items && Array.isArray(items) && items.length > 0) {
+      const formattedItems = items.map((item) => ({
+        reportId: newReport.reportId,
+        item: item.item || "",
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        hours: item.hours || 0,
+        hourlyRate: item.hourlyRate || 0,
+        sumMaterial: item.sumMaterial || 0,
+        sumWork: item.sumWork || 0,
+        sumPost: item.sumPost || 0,
+      }));
+      await AssessmentItem.bulkCreate(formattedItems);
+    }
+
+    // Create assessment summary if provided
+    if (summary) {
+      await AssessmentSummary.create({
+        reportId: newReport.reportId,
+        totalHours: summary.totalHours || 0,
+        totalSumMaterials: summary.totalSumMaterials || 0,
+        totalSumLabor: summary.totalSumLabor || 0,
+        sumExclVAT: summary.sumExclVAT || 0,
+        vat: summary.vat || 0,
+        sumInclVAT: summary.sumInclVAT || 0,
+        total: summary.total || 0,
+      });
+    }
+
+    // Update case status to completed
+    await Case.update(
+      { caseStatus: "completed" },
+      { where: { caseId } }
+    );
+
+    // Log the event
+    await logCaseEvent(
+      caseId,
+      "caseCompleted",
+      `Case completed with assessment report`
+    );
+
+    return newReport;
+  } catch (error) {
+    console.error("Error in reportAssessment service:", error);
+    console.error("Error stack:", error.stack);
+    throw error;
+  }
 };
 
 const extendCaseDeadline = async (caseId, newDeadline) => {

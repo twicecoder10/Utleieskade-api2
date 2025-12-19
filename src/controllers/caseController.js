@@ -240,8 +240,19 @@ exports.reportAssessment = async (req, res) => {
     const reportData = req.body;
     const { id } = req.user;
 
-    if (reportData.items.length < 1) {
-      responseHandler.setError(400, "At least an assessment item is required");
+    // Validate required fields
+    if (!reportData) {
+      responseHandler.setError(400, "Report data is required");
+      return responseHandler.send(res);
+    }
+
+    if (!reportData.caseId) {
+      responseHandler.setError(400, "Case ID is required");
+      return responseHandler.send(res);
+    }
+
+    if (!reportData.items || !Array.isArray(reportData.items) || reportData.items.length < 1) {
+      responseHandler.setError(400, "At least one assessment item is required");
       return responseHandler.send(res);
     }
 
@@ -255,14 +266,22 @@ exports.reportAssessment = async (req, res) => {
       inspectorId: id,
     });
 
+    if (!newReport) {
+      responseHandler.setError(500, "Failed to create report");
+      return responseHandler.send(res);
+    }
+
     responseHandler.setSuccess(201, "Assessment reported successfully", {
       reportId: newReport.reportId,
     });
 
     return responseHandler.send(res);
   } catch (error) {
-    console.error("Error creating case:", error);
-    responseHandler.setError(500, "Internal server error");
+    console.error("Error creating report assessment:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Request body:", JSON.stringify(req.body, null, 2));
+    const errorMessage = error.message || "Internal server error";
+    responseHandler.setError(500, errorMessage);
     return responseHandler.send(res);
   }
 };
