@@ -90,22 +90,23 @@ exports.startTimer = async (req, res) => {
     let timerId;
     
     // Try to create using raw SQL with different column combinations
+    // Handle both TIME and TIMESTAMP/DATE column types
     const attempts = [
-      // Attempt 1: With caseId and isActive
+      // Attempt 1: With caseId and isActive, using NOW() for timestamp compatibility
       `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "isActive", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $5) RETURNING *`,
+       VALUES (gen_random_uuid(), $1, $2, NOW(), $3, NOW(), NOW()) RETURNING *`,
       // Attempt 2: Without isActive
       `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $4) RETURNING *`,
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW(), NOW()) RETURNING *`,
       // Attempt 3: Without caseId and isActive
       `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, $3, $3) RETURNING *`,
+       VALUES (gen_random_uuid(), $1, NOW(), NOW(), NOW()) RETURNING *`,
     ];
     
     const attemptParams = [
-      [caseId, inspectorId, startTime, true, startTime],
-      [caseId, inspectorId, startTime, startTime],
-      [inspectorId, startTime, startTime],
+      [caseId, inspectorId, true],
+      [caseId, inspectorId],
+      [inspectorId],
     ];
     
     let lastError = null;
@@ -117,10 +118,28 @@ exports.startTimer = async (req, res) => {
           type: sequelize.QueryTypes.INSERT,
         });
         
-        // Fetch the created record
-        timerId = results[0]?.trackingId || results[0]?.trackingId;
+        // Fetch the created record - results structure may vary
+        timerId = results?.[0]?.trackingId || results?.trackingId || (Array.isArray(results) && results.length > 0 ? results[0]?.trackingId : null);
+        if (!timerId && results && results.length > 0) {
+          // Try to get trackingId from the result
+          const firstResult = results[0];
+          timerId = firstResult.trackingId || firstResult.trackingid;
+        }
+        
         if (timerId) {
           newTimer = await TrackingTime.findByPk(timerId);
+          if (!newTimer && results && results.length > 0) {
+            // If findByPk fails, create a mock object from the raw result
+            const rawResult = results[0];
+            newTimer = {
+              trackingId: rawResult.trackingId || rawResult.trackingid,
+              trackingTimeStart: rawResult.trackingTimeStart || rawResult.trackingtimestart || startTime,
+              trackingTimeEnd: rawResult.trackingTimeEnd || rawResult.trackingtimeend || null,
+              inspectorId: rawResult.inspectorId || rawResult.inspectorid || inspectorId,
+              caseId: rawResult.caseId || rawResult.caseid || caseId,
+              isActive: rawResult.isActive !== undefined ? rawResult.isActive : (rawResult.isactive !== undefined ? rawResult.isactive : null),
+            };
+          }
           console.log(`✅ Timer created successfully on attempt ${i + 1}`);
           break;
         }
@@ -128,29 +147,56 @@ exports.startTimer = async (req, res) => {
         const errorMsg = createError.message || String(createError);
         const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column") || errorMsg.includes("of relation"));
         const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column") || errorMsg.includes("of relation"));
+        const hasTimeError = errorMsg.includes("time") && (errorMsg.includes("invalid input") || errorMsg.includes("syntax"));
         
         console.warn(`Attempt ${i + 1} failed:`, errorMsg);
         lastError = createError;
         
         // If this is the last attempt, try one more time with minimal fields
         if (i === attempts.length - 1) {
-          // Last resort: try with only inspectorId and trackingTimeStart (no caseId, no isActive)
+          // Last resort: try with only inspectorId, using CURRENT_TIME for TIME columns
           try {
-            console.log("Trying final fallback with minimal fields");
-            const [finalResults] = await sequelize.query(
+            console.log("Trying final fallback with minimal fields and TIME compatibility");
+            const fallbackQueries = [
+              // Try with TIMESTAMP/DATE
               `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
-               VALUES (gen_random_uuid(), $1, $2, $3, $3) RETURNING *`,
-              {
-                bind: [inspectorId, startTime, startTime],
-                type: sequelize.QueryTypes.INSERT,
+               VALUES (gen_random_uuid(), $1, NOW(), NOW(), NOW()) RETURNING *`,
+              // Try with TIME (extract time portion)
+              `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
+               VALUES (gen_random_uuid(), $1, CURRENT_TIME, NOW(), NOW()) RETURNING *`,
+            ];
+            
+            for (const fallbackQuery of fallbackQueries) {
+              try {
+                const [finalResults] = await sequelize.query(fallbackQuery, {
+                  bind: [inspectorId],
+                  type: sequelize.QueryTypes.INSERT,
+                });
+                const finalResult = finalResults?.[0] || finalResults;
+                timerId = finalResult?.trackingId || finalResult?.trackingid;
+                if (timerId) {
+                  newTimer = await TrackingTime.findByPk(timerId);
+                  if (!newTimer && finalResult) {
+                    newTimer = {
+                      trackingId: timerId,
+                      trackingTimeStart: finalResult.trackingTimeStart || finalResult.trackingtimestart || startTime,
+                      trackingTimeEnd: finalResult.trackingTimeEnd || finalResult.trackingtimeend || null,
+                      inspectorId: finalResult.inspectorId || finalResult.inspectorid || inspectorId,
+                      caseId: finalResult.caseId || finalResult.caseid || null,
+                      isActive: finalResult.isActive !== undefined ? finalResult.isActive : (finalResult.isactive !== undefined ? finalResult.isactive : null),
+                    };
+                  }
+                  console.log(`✅ Timer created successfully with final fallback`);
+                  break;
+                }
+              } catch (fallbackErr) {
+                console.warn("Fallback query failed:", fallbackErr.message);
+                if (fallbackQuery === fallbackQueries[fallbackQueries.length - 1]) {
+                  throw fallbackErr;
+                }
               }
-            );
-            timerId = finalResults[0]?.trackingId || finalResults[0]?.trackingId;
-            if (timerId) {
-              newTimer = await TrackingTime.findByPk(timerId);
-              console.log(`✅ Timer created successfully with final fallback`);
-              break;
             }
+            if (newTimer) break;
           } catch (finalError) {
             console.error("Final fallback also failed:", finalError.message);
             throw new Error(`Failed to create timer: ${finalError.message}`);
