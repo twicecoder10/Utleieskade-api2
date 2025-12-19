@@ -63,8 +63,22 @@ const caseValidationRules = () => {
 
     body("damages.*.photos.*.photoUrl")
       .optional()
-      .isURL()
-      .withMessage("Photo URL must be a valid URL"),
+      .custom((value) => {
+        // Accept full URLs (http/https) or relative paths starting with /files/
+        if (typeof value === 'string' && value.trim().length > 0) {
+          const trimmed = value.trim();
+          // Check if it's a full URL or a relative path
+          if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/files/')) {
+            return true;
+          }
+          // Also accept Azure blob URLs
+          if (trimmed.includes('blob.core.windows.net')) {
+            return true;
+          }
+        }
+        return false;
+      })
+      .withMessage("Photo URL must be a valid URL or file path"),
   ];
 };
 

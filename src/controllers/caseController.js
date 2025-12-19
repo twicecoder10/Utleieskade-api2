@@ -6,7 +6,16 @@ exports.reportDamage = async (req, res) => {
     const caseData = req.body;
     const { id } = req.user;
 
+    console.log("📋 Creating case with data:", {
+      userId: id,
+      propertyId: caseData.propertyId,
+      damagesCount: caseData.damages?.length || 0,
+      totalPhotos: caseData.damages?.reduce((sum, d) => sum + (d.photos?.length || 0), 0) || 0,
+    });
+
     const newCase = await caseService.createCase({ ...caseData, userId: id });
+
+    console.log("✅ Case created successfully:", newCase.caseId);
 
     responseHandler.setSuccess(201, "Case created successfully", {
       caseId: newCase.caseId,
@@ -14,7 +23,8 @@ exports.reportDamage = async (req, res) => {
 
     return responseHandler.send(res);
   } catch (error) {
-    console.error("Error creating case:", error);
+    console.error("❌ Error creating case:", error);
+    console.error("Error stack:", error.stack);
     responseHandler.setError(500, error.message);
     return responseHandler.send(res);
   }

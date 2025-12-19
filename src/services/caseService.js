@@ -72,10 +72,18 @@ const createCase = async (caseData) => {
     });
 
     if (damage.photos && damage.photos.length > 0) {
+      console.log(`📸 Processing ${damage.photos.length} photos for damage ${createdDamage.damageId}`);
+      
       // Filter out photos with invalid or missing photoUrl
       const validPhotos = damage.photos.filter((photo) => {
-        return photo && photo.photoUrl && typeof photo.photoUrl === 'string' && photo.photoUrl.trim().length > 0;
+        const isValid = photo && photo.photoUrl && typeof photo.photoUrl === 'string' && photo.photoUrl.trim().length > 0;
+        if (!isValid) {
+          console.warn(`⚠️  Invalid photo skipped:`, { photo, reason: !photo ? 'photo is null/undefined' : !photo.photoUrl ? 'photoUrl missing' : 'photoUrl is not a string or empty' });
+        }
+        return isValid;
       });
+
+      console.log(`✅ Found ${validPhotos.length} valid photos out of ${damage.photos.length}`);
 
       if (validPhotos.length > 0) {
         const damagePhotos = validPhotos.map((photo) => ({
@@ -84,10 +92,14 @@ const createCase = async (caseData) => {
           photoUrl: photo.photoUrl.trim(), // Ensure no whitespace
         }));
 
-        await DamagePhoto.bulkCreate(damagePhotos);
+        console.log(`💾 Saving ${damagePhotos.length} photos to database for damage ${createdDamage.damageId}`);
+        const createdPhotos = await DamagePhoto.bulkCreate(damagePhotos);
+        console.log(`✅ Successfully saved ${createdPhotos.length} photos for damage ${createdDamage.damageId}`);
       } else {
-        console.warn(`No valid photos found for damage ${createdDamage.damageId}, skipping photo creation`);
+        console.warn(`⚠️  No valid photos found for damage ${createdDamage.damageId}, skipping photo creation`);
       }
+    } else {
+      console.log(`ℹ️  No photos provided for damage ${createdDamage.damageId}`);
     }
   }
 
