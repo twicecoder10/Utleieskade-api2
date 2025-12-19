@@ -84,10 +84,13 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   const origin = req.headers.origin;
   
-  // Set CORS headers even on errors
+  // Set CORS headers even on errors - BEFORE passing to error middleware
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Type, Authorization");
   }
   
   // Pass to error middleware
