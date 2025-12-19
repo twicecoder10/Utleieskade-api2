@@ -19,7 +19,7 @@ exports.startTimer = async (req, res) => {
 
     // Check if there's an active timer for this case
     // Handle case where caseId or isActive columns might not exist yet
-    let activeTimer;
+    let activeTimer = null;
     try {
       // Try with both caseId and isActive
       activeTimer = await TrackingTime.findOne({
@@ -30,56 +30,48 @@ exports.startTimer = async (req, res) => {
         },
       });
     } catch (dbError) {
-      // If caseId column doesn't exist, check without it
-      if (dbError.message && dbError.message.includes("caseId") && dbError.message.includes("does not exist")) {
-        console.warn("caseId column doesn't exist yet, checking without it");
-        try {
-          activeTimer = await TrackingTime.findOne({
-            where: {
-              inspectorId,
-              isActive: true,
-            },
-          });
-        } catch (isActiveError) {
-          // If isActive also doesn't exist, check for timer without end time
-          if (isActiveError.message && isActiveError.message.includes("isActive") && isActiveError.message.includes("does not exist")) {
-            console.warn("isActive column doesn't exist yet, checking for timer without end time");
-            activeTimer = await TrackingTime.findOne({
-              where: {
-                inspectorId,
-                trackingTimeEnd: null,
-              },
-            });
-          } else {
-            throw isActiveError;
-          }
+      const errorMsg = dbError.message || String(dbError);
+      const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
+      const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
+      
+      console.warn("Database error checking for active timer:", errorMsg);
+      
+      if (hasCaseIdError || hasIsActiveError) {
+        // Build where clause without missing columns
+        const whereClause = { inspectorId };
+        if (!hasCaseIdError) {
+          whereClause.caseId = caseId;
         }
-      } else if (dbError.message && dbError.message.includes("isActive") && dbError.message.includes("does not exist")) {
-        // If only isActive doesn't exist, check without it
-        console.warn("isActive column doesn't exist yet, checking for timer without end time");
+        
+        // Try with isActive first
         try {
+          whereClause.isActive = true;
           activeTimer = await TrackingTime.findOne({
-            where: {
-              caseId,
-              inspectorId,
-              trackingTimeEnd: null,
-            },
+            where: whereClause,
           });
-        } catch (caseIdError) {
-          // If caseId also doesn't exist
-          if (caseIdError.message && caseIdError.message.includes("caseId") && caseIdError.message.includes("does not exist")) {
-            activeTimer = await TrackingTime.findOne({
-              where: {
-                inspectorId,
-                trackingTimeEnd: null,
-              },
-            });
+        } catch (isActiveErr) {
+          const isActiveErrMsg = isActiveErr.message || String(isActiveErr);
+          if (isActiveErrMsg.includes("isActive") && (isActiveErrMsg.includes("does not exist") || isActiveErrMsg.includes("column") || isActiveErrMsg.includes("unknown column"))) {
+            // If isActive doesn't exist, use trackingTimeEnd null
+            delete whereClause.isActive;
+            whereClause.trackingTimeEnd = null;
+            try {
+              activeTimer = await TrackingTime.findOne({
+                where: whereClause,
+              });
+            } catch (finalErr) {
+              console.warn("Could not check for active timer with fallback:", finalErr.message);
+              activeTimer = null;
+            }
           } else {
-            throw caseIdError;
+            console.warn("Error checking for active timer:", isActiveErrMsg);
+            activeTimer = null;
           }
         }
       } else {
-        throw dbError;
+        // If it's not a column error, log and continue (might be a different issue)
+        console.error("Unexpected error checking for active timer:", errorMsg);
+        activeTimer = null;
       }
     }
 
@@ -99,49 +91,50 @@ exports.startTimer = async (req, res) => {
         trackingTimeStart: new Date(),
         isActive: true,
       });
+      console.log("✅ Timer created successfully with all fields");
     } catch (createError) {
-      // If caseId doesn't exist, try without it
-      if (createError.message && createError.message.includes("caseId") && createError.message.includes("does not exist")) {
-        console.warn("caseId column doesn't exist yet, creating without it");
-        try {
-          newTimer = await TrackingTime.create({
-            inspectorId,
-            trackingTimeStart: new Date(),
-            isActive: true,
-          });
-        } catch (isActiveError) {
-          // If isActive also doesn't exist, create without both
-          if (isActiveError.message && isActiveError.message.includes("isActive") && isActiveError.message.includes("does not exist")) {
-            console.warn("isActive column doesn't exist yet, creating without it");
-            newTimer = await TrackingTime.create({
-              inspectorId,
-              trackingTimeStart: new Date(),
-            });
-          } else {
-            throw isActiveError;
-          }
+      const errorMsg = createError.message || String(createError);
+      const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
+      const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
+      
+      console.warn("Error creating timer with all fields:", errorMsg);
+      
+      if (hasCaseIdError || hasIsActiveError) {
+        // Build timer data without missing columns
+        const timerData = {
+          inspectorId,
+          trackingTimeStart: new Date(),
+        };
+        
+        if (!hasCaseIdError) {
+          timerData.caseId = caseId;
         }
-      } else if (createError.message && createError.message.includes("isActive") && createError.message.includes("does not exist")) {
-        // If only isActive doesn't exist
-        console.warn("isActive column doesn't exist yet, creating without it");
+        if (!hasIsActiveError) {
+          timerData.isActive = true;
+        }
+        
         try {
-          newTimer = await TrackingTime.create({
-            caseId,
-            inspectorId,
-            trackingTimeStart: new Date(),
-          });
-        } catch (caseIdError) {
-          // If caseId also doesn't exist
-          if (caseIdError.message && caseIdError.message.includes("caseId") && caseIdError.message.includes("does not exist")) {
+          newTimer = await TrackingTime.create(timerData);
+          console.log("✅ Timer created successfully with fallback fields:", Object.keys(timerData));
+        } catch (fallbackError) {
+          const fallbackMsg = fallbackError.message || String(fallbackError);
+          console.error("Error creating timer with fallback:", fallbackMsg);
+          
+          // Last resort: create with only required fields
+          try {
             newTimer = await TrackingTime.create({
               inspectorId,
               trackingTimeStart: new Date(),
             });
-          } else {
-            throw caseIdError;
+            console.log("✅ Timer created with minimal fields");
+          } catch (minimalError) {
+            console.error("Failed to create timer even with minimal fields:", minimalError.message);
+            throw new Error(`Failed to create timer: ${minimalError.message}`);
           }
         }
       } else {
+        // If it's not a column error, re-throw
+        console.error("Unexpected error creating timer:", errorMsg);
         throw createError;
       }
     }
