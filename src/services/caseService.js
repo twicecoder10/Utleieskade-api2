@@ -161,7 +161,7 @@ const getAllCases = async ({
     const caseData = caseItem.toJSON ? caseItem.toJSON() : caseItem;
     // Ensure payments array exists and is accessible
     if (caseData.payments && Array.isArray(caseData.payments)) {
-      caseData.payments = caseData.payments.map((payment: any) => 
+      caseData.payments = caseData.payments.map((payment) => 
         payment.toJSON ? payment.toJSON() : payment
       );
     }

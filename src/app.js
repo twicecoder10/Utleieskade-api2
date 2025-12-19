@@ -76,7 +76,22 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Expose-Headers", "Content-Type, Authorization");
   }
   
+  // Always call next() to ensure request continues
   next();
+});
+
+// Global error handler to ensure CORS headers are set even on errors
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Set CORS headers even on errors
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+  
+  // Pass to error middleware
+  next(err);
 });
 
 // Remove cors package - using manual headers only to avoid conflicts

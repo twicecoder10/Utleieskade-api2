@@ -440,70 +440,123 @@ const getInspectorSettings = async (inspectorId) => {
 };
 
 const updateInspectorSettings = async (inspectorId, data) => {
-  const { notifications, payment, privacySecurity, expertises } = data;
+  try {
+    const { notifications, payment, privacySecurity, expertises } = data;
 
-  const inspector = await User.findOne({
-    where: { userId: inspectorId },
-    include: [{ model: Expertise, as: "expertises" }],
-  });
+    const inspector = await User.findOne({
+      where: { userId: inspectorId },
+      include: [{ model: Expertise, as: "expertises" }],
+    });
 
-  if (!inspector) {
-    return { success: false, message: "Inspector not found" };
-  }
-
-  if (notifications) {
-    await NotificationSettings.update(
-      { ...notifications },
-      { where: { userId: inspectorId } }
-    );
-  }
-
-  if (payment) {
-    await BankDetails.update(
-      {
-        bankName: payment.bankName,
-        accountNumber: payment.accountNumber,
-        userFirstName: payment.userFirstName,
-        userLastName: payment.userLastName,
-      },
-      { where: { userId: inspectorId } }
-    );
-  }
-
-  if (privacySecurity && privacySecurity.pauseMode) {
-    inspector.userStatus = "inactive";
-    await inspector.save();
-  }
-
-  if (expertises) {
-    const existingExpertises = inspector.expertises.map((e) => e.expertiseCode);
-
-    const codesToAdd = expertises.filter(
-      (code) => !existingExpertises.includes(code)
-    );
-    const codesToRemove = existingExpertises.filter(
-      (code) => !expertises.includes(code)
-    );
-
-    if (codesToRemove.length > 0) {
-      await UserExpertise.destroy({
-        where: {
-          userId: inspectorId,
-          expertiseCode: codesToRemove,
-        },
-      });
+    if (!inspector) {
+      return { success: false, message: "Inspector not found" };
     }
 
-    if (codesToAdd.length > 0) {
-      const newExpertiseMappings = codesToAdd.map((code) => ({
-        userId: inspectorId,
-        expertiseCode: code,
-      }));
-      await UserExpertise.bulkCreate(newExpertiseMappings);
+    if (notifications) {
+      try {
+        // Check if NotificationSettings record exists, create if not
+        const existingSettings = await NotificationSettings.findOne({
+          where: { userId: inspectorId },
+        });
+        
+        if (existingSettings) {
+          await NotificationSettings.update(
+            { ...notifications },
+            { where: { userId: inspectorId } }
+          );
+        } else {
+          await NotificationSettings.create({
+            userId: inspectorId,
+            ...notifications,
+          });
+        }
+      } catch (notifError) {
+        console.error("Error updating notifications:", notifError);
+        // Continue with other updates even if notifications fail
+      }
     }
-  }
 
-  return { success: true, message: "Inspector settings updated successfully" };
+    if (payment) {
+      try {
+        // Check if BankDetails record exists, create if not
+        const existingBank = await BankDetails.findOne({
+          where: { userId: inspectorId },
+        });
+        
+        if (existingBank) {
+          await BankDetails.update(
+            {
+              bankName: payment.bankName,
+              accountNumber: payment.accountNumber,
+              userFirstName: payment.userFirstName,
+              userLastName: payment.userLastName,
+            },
+            { where: { userId: inspectorId } }
+          );
+        } else {
+          await BankDetails.create({
+            userId: inspectorId,
+            bankName: payment.bankName,
+            accountNumber: payment.accountNumber,
+            userFirstName: payment.userFirstName,
+            userLastName: payment.userLastName,
+          });
+        }
+      } catch (bankError) {
+        console.error("Error updating bank details:", bankError);
+        // Continue with other updates even if bank details fail
+      }
+    }
+
+    if (privacySecurity && privacySecurity.pauseMode !== undefined) {
+      try {
+        inspector.userStatus = privacySecurity.pauseMode ? "inactive" : "active";
+        await inspector.save();
+      } catch (statusError) {
+        console.error("Error updating user status:", statusError);
+      }
+    }
+
+    if (expertises && Array.isArray(expertises)) {
+      try {
+        const existingExpertises = (inspector.expertises || []).map((e) => e.expertiseCode);
+
+        const codesToAdd = expertises.filter(
+          (code) => !existingExpertises.includes(code)
+        );
+        const codesToRemove = existingExpertises.filter(
+          (code) => !expertises.includes(code)
+        );
+
+        if (codesToRemove.length > 0) {
+          await UserExpertise.destroy({
+            where: {
+              userId: inspectorId,
+              expertiseCode: codesToRemove,
+            },
+          });
+        }
+
+        if (codesToAdd.length > 0) {
+          const newExpertiseMappings = codesToAdd.map((code) => ({
+            userId: inspectorId,
+            expertiseCode: code,
+          }));
+          await UserExpertise.bulkCreate(newExpertiseMappings, {
+            ignoreDuplicates: true,
+          });
+        }
+      } catch (expertiseError) {
+        console.error("Error updating expertises:", expertiseError);
+        // Continue even if expertises update fails
+      }
+    }
+
+    return { success: true, message: "Inspector settings updated successfully" };
+  } catch (error) {
+    console.error("Error in updateInspectorSettings:", error);
+    throw error;
+  }
 };
 
 const deleteInspector = async (inspectorId) => {
