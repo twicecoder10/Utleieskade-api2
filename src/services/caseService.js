@@ -189,7 +189,7 @@ const getAllCases = async ({
 };
 
 const getCaseDetails = async (caseId) => {
-  return await Case.findOne({
+  const caseDetails = await Case.findOne({
     where: { caseId },
     include: [
       {
@@ -203,6 +203,7 @@ const getCaseDetails = async (caseId) => {
           "userEmail",
           "userAddress",
         ],
+        required: false,
       },
       {
         model: User,
@@ -214,6 +215,7 @@ const getCaseDetails = async (caseId) => {
           "userPhone",
           "userEmail",
           "userAddress",
+          "userProfilePic",
         ],
         required: false,
       },
@@ -227,6 +229,7 @@ const getCaseDetails = async (caseId) => {
           "propertyAddress",
           "propertyCountry",
         ],
+        required: false,
       },
       {
         model: Damage,
@@ -253,6 +256,7 @@ const getCaseDetails = async (caseId) => {
         as: "timeline",
         separate: true,
         order: [["eventTimestamp", "ASC"]],
+        required: false,
       },
       {
         model: Report,
@@ -261,13 +265,20 @@ const getCaseDetails = async (caseId) => {
           {
             model: ReportPhoto,
             as: "reportPhotos",
-            // attributes: [],
             required: false,
           },
         ],
+        required: false,
       },
     ],
   });
+
+  // Convert to plain JSON to ensure all nested data is properly serialized
+  if (caseDetails) {
+    return caseDetails.toJSON ? caseDetails.toJSON() : caseDetails;
+  }
+  
+  return null;
 };
 
 const updateCaseStatus = async (caseId, status) => {
