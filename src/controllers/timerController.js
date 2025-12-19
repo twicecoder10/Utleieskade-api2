@@ -159,7 +159,7 @@ exports.stopTimer = async (req, res) => {
 
     // Find active timer for this case
     // Handle case where caseId or isActive columns might not exist yet
-    let activeTimer;
+    let activeTimer = null;
     try {
       activeTimer = await TrackingTime.findOne({
         where: {
@@ -169,53 +169,47 @@ exports.stopTimer = async (req, res) => {
         },
       });
     } catch (dbError) {
-      // Handle missing columns gracefully
-      if (dbError.message && dbError.message.includes("caseId") && dbError.message.includes("does not exist")) {
-        console.warn("caseId column doesn't exist yet, checking without it");
-        try {
-          activeTimer = await TrackingTime.findOne({
-            where: {
-              inspectorId,
-              isActive: true,
-            },
-          });
-        } catch (isActiveError) {
-          if (isActiveError.message && isActiveError.message.includes("isActive") && isActiveError.message.includes("does not exist")) {
-            console.warn("isActive column doesn't exist yet, checking for timer without end time");
-            activeTimer = await TrackingTime.findOne({
-              where: {
-                inspectorId,
-                trackingTimeEnd: null,
-              },
-            });
-          } else {
-            throw isActiveError;
-          }
+      const errorMsg = dbError.message || String(dbError);
+      const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
+      const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
+      
+      console.warn("Database error finding active timer:", errorMsg);
+      
+      if (hasCaseIdError || hasIsActiveError) {
+        // Build where clause without missing columns
+        const whereClause = { inspectorId };
+        if (!hasCaseIdError) {
+          whereClause.caseId = caseId;
         }
-      } else if (dbError.message && dbError.message.includes("isActive") && dbError.message.includes("does not exist")) {
-        console.warn("isActive column doesn't exist yet, checking for timer without end time");
+        
+        // Try with isActive first
         try {
+          whereClause.isActive = true;
           activeTimer = await TrackingTime.findOne({
-            where: {
-              caseId,
-              inspectorId,
-              trackingTimeEnd: null,
-            },
+            where: whereClause,
           });
-        } catch (caseIdError) {
-          if (caseIdError.message && caseIdError.message.includes("caseId") && caseIdError.message.includes("does not exist")) {
-            activeTimer = await TrackingTime.findOne({
-              where: {
-                inspectorId,
-                trackingTimeEnd: null,
-              },
-            });
+        } catch (isActiveErr) {
+          const isActiveErrMsg = isActiveErr.message || String(isActiveErr);
+          if (isActiveErrMsg.includes("isActive") && (isActiveErrMsg.includes("does not exist") || isActiveErrMsg.includes("column") || isActiveErrMsg.includes("unknown column"))) {
+            // If isActive doesn't exist, use trackingTimeEnd null
+            delete whereClause.isActive;
+            whereClause.trackingTimeEnd = null;
+            try {
+              activeTimer = await TrackingTime.findOne({
+                where: whereClause,
+              });
+            } catch (finalErr) {
+              console.warn("Could not find active timer with fallback:", finalErr.message);
+              activeTimer = null;
+            }
           } else {
-            throw caseIdError;
+            console.warn("Error finding active timer:", isActiveErrMsg);
+            activeTimer = null;
           }
         }
       } else {
-        throw dbError;
+        console.error("Unexpected error finding active timer:", errorMsg);
+        activeTimer = null;
       }
     }
 
