@@ -518,7 +518,7 @@ Case.hasMany(Report, {
   as: "reports",
   onDelete: "CASCADE",
 });
-Case.hasMany(Payment, { foreignKey: "caseId", onDelete: "CASCADE" });
+Case.hasMany(Payment, { foreignKey: "caseId", as: "payments", onDelete: "CASCADE" });
 Case.hasMany(CaseTimeline, {
   foreignKey: "caseId",
   as: "timeline",

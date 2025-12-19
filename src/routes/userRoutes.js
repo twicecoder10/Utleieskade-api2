@@ -215,61 +215,68 @@ router.get("/fetchProfile", authMiddleware, userController.fetchUserProfile);
  */
 router.put("/update", authMiddleware, userController.updateUser);
 
-// /**
-//  * @swagger
-//  * /users/send-password-reset-email:
-//  *   post:
-//  *     summary: Send a password reset email
-//  *     tags: [Users]
-//  *     description: Sends a password reset link to the user's email address.
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             properties:
-//  *               userEmail:
-//  *                 type: string
-//  *                 example: "mail@mail.com"
-//  *     responses:
-//  *       200:
-//  *         description: Password reset email sent successfully.
-//  *       400:
-//  *         description: Email is required or user does not exist.
-//  *       500:
-//  *         description: Internal server error.
-//  */
-// router.post(
-//   "/send-password-reset-email",
-//   userController.sendPasswordResetEmail
-// );
+/**
+ * @swagger
+ * /users/send-password-reset-email:
+ *   post:
+ *     summary: Send a password reset OTP email
+ *     tags: [Users]
+ *     description: Sends an OTP code to the user's email address for password reset.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userEmail:
+ *                 type: string
+ *                 example: "mail@mail.com"
+ *     responses:
+ *       200:
+ *         description: Password reset OTP sent successfully.
+ *       400:
+ *         description: Email is required or user does not exist.
+ *       500:
+ *         description: Internal server error.
+ */
+router.post(
+  "/send-password-reset-email",
+  userController.sendPasswordResetEmail
+);
 
-// /**
-//  * @swagger
-//  * /users/verify-password-reset-link:
-//  *   get:
-//  *     summary: Verify password reset link
-//  *     tags: [Users]
-//  *     description: Checks if the password reset link (token) is valid and redirects user accordingly.
-//  *     parameters:
-//  *       - in: query
-//  *         name: token
-//  *         required: true
-//  *         schema:
-//  *           type: string
-//  *         description: The token received in the password reset email.
-//  *     responses:
-//  *       302:
-//  *         description: Redirects to the password reset page.
-//  *       400:
-//  *         description: No token provided.
-//  *       401:
-//  *         description: Invalid or expired token.
-//  *       500:
-//  *         description: Internal server error.
-//  */
-// router.get("/verify-password-reset-link", userController.verifyPasswordReset);
+/**
+ * @swagger
+ * /users/verify-password-reset-link:
+ *   post:
+ *     summary: Verify password reset OTP
+ *     tags: [Users]
+ *     description: Verifies the OTP code and returns a password reset token.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userEmail:
+ *                 type: string
+ *                 example: "mail@mail.com"
+ *               token:
+ *                 type: string
+ *                 example: "123456"
+ *                 description: The OTP code received via email
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully. Returns a password reset token.
+ *       400:
+ *         description: OTP code or email is required, or OTP is invalid/expired.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.post("/verify-password-reset-link", userController.verifyPasswordReset);
 
 /**
  * @swagger

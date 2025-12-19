@@ -28,10 +28,18 @@ const createInspector = async (inspectorData, inspectorExpertiseCodes) => {
 
 const getInspectorDasboard = async (inspectorId) => {
   try {
+    if (!inspectorId) {
+      throw new Error("Inspector ID is required");
+    }
+
     const inspector = await User.findOne({
       where: { userId: inspectorId, userType: "inspector" },
       attributes: ["userFirstName", "userLastName"],
     });
+
+    if (!inspector) {
+      throw new Error("Inspector not found");
+    }
 
     const activeCases = await Case.count({
       where: {
@@ -40,9 +48,17 @@ const getInspectorDasboard = async (inspectorId) => {
       },
     }) || 0;
 
-    const totalEarnings = await InspectorPayment.sum("paymentAmount", {
-      where: { inspectorId },
-    }) || 0;
+    let totalEarnings = 0;
+    try {
+      const earningsSum = await InspectorPayment.sum("paymentAmount", {
+        where: { inspectorId },
+      });
+      totalEarnings = earningsSum ? parseFloat(earningsSum) : 0;
+    } catch (earningsError) {
+      console.error("Error calculating total earnings:", earningsError);
+      // If InspectorPayment model doesn't exist or has issues, default to 0
+      totalEarnings = 0;
+    }
 
     // Get prioritized cases (open cases with deadlines)
     const prioritizedCasesRaw = await Case.findAll({

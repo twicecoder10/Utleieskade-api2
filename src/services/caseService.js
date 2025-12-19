@@ -145,8 +145,10 @@ const getAllCases = async ({
       },
       {
         model: Payment,
+        as: "payments",
         attributes: ["paymentId", "paymentAmount", "paymentDate", "paymentStatus"],
         required: false,
+        separate: false, // Include payments in the same query
       },
     ],
     limit: parseInt(limit),
@@ -154,8 +156,20 @@ const getAllCases = async ({
     order: [[sortBy, sortOrder]],
   });
 
+  // Ensure payments are properly included in the response
+  const casesWithPayments = cases.map((caseItem) => {
+    const caseData = caseItem.toJSON ? caseItem.toJSON() : caseItem;
+    // Ensure payments array exists and is accessible
+    if (caseData.payments && Array.isArray(caseData.payments)) {
+      caseData.payments = caseData.payments.map((payment: any) => 
+        payment.toJSON ? payment.toJSON() : payment
+      );
+    }
+    return caseData;
+  });
+
   return {
-    cases,
+    cases: casesWithPayments,
     totalCases,
     totalPages: Math.ceil(totalCases / limit),
     currentPage: parseInt(page),

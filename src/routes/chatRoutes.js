@@ -92,6 +92,17 @@ router.get(
   chatController.getMessages
 );
 
+// Handle trailing slash case
+router.get(
+  "/get-messages/",
+  authMiddleware,
+  (req, res) => {
+    const responseHandler = require("../utils/responseHandler");
+    responseHandler.setError(400, "Conversation ID is required");
+    return responseHandler.send(res);
+  }
+);
+
 /**
  * @swagger
  * /chats/get-admin-chats:
