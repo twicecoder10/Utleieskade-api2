@@ -41,10 +41,13 @@ const getInspectorDasboard = async (inspectorId) => {
       throw new Error("Inspector not found");
     }
 
+    // Count active cases - includes open, in-progress, and on-hold (excludes completed and cancelled)
     const activeCases = await Case.count({
       where: {
         inspectorId,
-        caseStatus: "open",
+        caseStatus: {
+          [Op.in]: ["open", "in-progress", "on-hold", "pending"],
+        },
       },
     }) || 0;
 
@@ -60,11 +63,13 @@ const getInspectorDasboard = async (inspectorId) => {
       totalEarnings = 0;
     }
 
-    // Get prioritized cases (open cases with deadlines)
+    // Get prioritized cases (active cases with deadlines - open, in-progress, on-hold, pending)
     const prioritizedCasesRaw = await Case.findAll({
       where: {
         inspectorId,
-        caseStatus: "open",
+        caseStatus: {
+          [Op.in]: ["open", "in-progress", "on-hold", "pending"],
+        },
       },
       attributes: [
         "caseId",

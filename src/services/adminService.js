@@ -400,6 +400,292 @@ const updateInspectorDetails = async (inspectorId, data) => {
   return { success: true, data: inspector };
 };
 
+const getPerformanceMetrics = async ({ startDate, endDate }) => {
+  const isPostgres = sequelize.getDialect() === "postgres";
+  
+  // Build where clause for date filtering
+  const caseWhereClause = {};
+  if (startDate && endDate) {
+    caseWhereClause.createdAt = {
+      [Op.between]: [new Date(startDate), new Date(endDate)],
+    };
+  }
+
+  // Case Metrics
+  const totalSubmitted = await Case.count({ where: caseWhereClause });
+  const totalCompleted = await Case.count({
+    where: {
+      ...caseWhereClause,
+      caseStatus: "completed",
+    },
+  });
+  const totalCanceled = await Case.count({
+    where: {
+      ...caseWhereClause,
+      caseStatus: "cancelled",
+    },
+  });
+
+  // Calculate average resolution time (in days)
+  const completedCases = await Case.findAll({
+    where: {
+      ...caseWhereClause,
+      caseStatus: "completed",
+      caseCompletedDate: { [Op.ne]: null },
+    },
+    attributes: [
+      "caseId",
+      "createdAt",
+      "caseCompletedDate",
+    ],
+    raw: true,
+  });
+
+  let averageResolutionTime = 0;
+  if (completedCases.length > 0) {
+    const totalDays = completedCases.reduce((sum, caseItem) => {
+      const created = new Date(caseItem.createdAt);
+      const completed = new Date(caseItem.caseCompletedDate);
+      const days = (completed - created) / (1000 * 60 * 60 * 24);
+      return sum + days;
+    }, 0);
+    averageResolutionTime = totalDays / completedCases.length;
+  }
+
+  // Inspector Performance - Get all inspectors and their stats
+  const inspectors = await User.findAll({
+    where: { userType: "inspector" },
+    attributes: ["userId", "userFirstName", "userLastName"],
+  });
+
+  const formattedInspectorPerformance = await Promise.all(
+    inspectors.map(async (inspector) => {
+      const inspectorId = inspector.userId;
+      
+      // Count cases handled by this inspector
+      const casesHandled = await Case.count({
+        where: {
+          inspectorId,
+          ...caseWhereClause,
+        },
+      });
+
+      // Calculate total earnings
+      const earningsWhereClause = { inspectorId };
+      if (startDate && endDate) {
+        earningsWhereClause.paymentDate = {
+          [Op.between]: [new Date(startDate), new Date(endDate)],
+        };
+      }
+
+      const totalEarnings = isPostgres
+        ? await InspectorPayment.findAll({
+            attributes: [
+              [
+                Sequelize.fn(
+                  "SUM",
+                  Sequelize.cast(Sequelize.col("paymentAmount"), "numeric")
+                ),
+                "total",
+              ],
+            ],
+            where: {
+              ...earningsWhereClause,
+              paymentStatus: "processed",
+            },
+            raw: true,
+          }).then((result) => parseFloat(result[0]?.total || 0))
+        : await InspectorPayment.sum("paymentAmount", {
+            where: {
+              ...earningsWhereClause,
+              paymentStatus: "processed",
+            },
+          });
+
+      // Calculate time spent (estimate 2 hours per case, or use TrackingTime if available)
+      const timeSpentHours = casesHandled * 2;
+
+      return {
+        inspectorId,
+        inspectorName: `${inspector.userFirstName} ${inspector.userLastName}`,
+        casesHandled,
+        totalEarnings: parseFloat(totalEarnings || 0),
+        timeSpentHours: parseFloat(timeSpentHours.toFixed(2)),
+      };
+    })
+  );
+
+  return {
+    caseMetrics: {
+      totalSubmitted,
+      totalCompleted,
+      totalCanceled,
+      averageResolutionTime: parseFloat(averageResolutionTime.toFixed(2)),
+    },
+    inspectorPerformance: formattedInspectorPerformance,
+  };
+};
+
+const getEarningsReport = async ({ period = "monthly", startDate, endDate }) => {
+  const isPostgres = sequelize.getDialect() === "postgres";
+
+  // Build where clause for date filtering
+  const paymentWhereClause = { paymentStatus: "processed" };
+  const payoutWhereClause = { paymentStatus: "processed" };
+  const refundWhereClause = { refundStatus: "processed" };
+
+  if (startDate && endDate) {
+    paymentWhereClause.paymentDate = {
+      [Op.between]: [new Date(startDate), new Date(endDate)],
+    };
+    payoutWhereClause.paymentDate = {
+      [Op.between]: [new Date(startDate), new Date(endDate)],
+    };
+    refundWhereClause.requestDate = {
+      [Op.between]: [new Date(startDate), new Date(endDate)],
+    };
+  }
+
+  // Calculate platform revenue (from tenant payments)
+  const platformRevenue = isPostgres
+    ? await Payment.findAll({
+        attributes: [
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.cast(Sequelize.col("paymentAmount"), "numeric")
+            ),
+            "total",
+          ],
+        ],
+        where: paymentWhereClause,
+        raw: true,
+      }).then((result) => parseFloat(result[0]?.total || 0))
+    : await Payment.sum("paymentAmount", {
+        where: paymentWhereClause,
+      });
+
+  // Calculate total payouts (to inspectors)
+  const totalPayouts = isPostgres
+    ? await InspectorPayment.findAll({
+        attributes: [
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.cast(Sequelize.col("paymentAmount"), "numeric")
+            ),
+            "total",
+          ],
+        ],
+        where: payoutWhereClause,
+        raw: true,
+      }).then((result) => parseFloat(result[0]?.total || 0))
+    : await InspectorPayment.sum("paymentAmount", {
+        where: payoutWhereClause,
+      });
+
+  // Calculate refunds issued
+  const refundsIssued = isPostgres
+    ? await Refund.findAll({
+        attributes: [
+          [
+            Sequelize.fn(
+              "SUM",
+              Sequelize.cast(Sequelize.col("amount"), "numeric")
+            ),
+            "total",
+          ],
+        ],
+        where: refundWhereClause,
+        raw: true,
+      }).then((result) => parseFloat(result[0]?.total || 0))
+    : await Refund.sum("amount", {
+        where: refundWhereClause,
+      });
+
+  // Calculate net revenue
+  const netRevenue = platformRevenue - totalPayouts - refundsIssued;
+
+  return {
+    platformRevenue: parseFloat(platformRevenue || 0),
+    totalPayouts: parseFloat(totalPayouts || 0),
+    refundsIssued: parseFloat(refundsIssued || 0),
+    netRevenue: parseFloat(netRevenue || 0),
+  };
+};
+
+const exportReport = async ({ reportType, format, period, startDate, endDate, res }) => {
+  try {
+    let data;
+    
+    if (reportType === "performance") {
+      data = await getPerformanceMetrics({ startDate, endDate });
+    } else if (reportType === "earnings") {
+      data = await getEarningsReport({ period, startDate, endDate });
+    }
+
+    if (format === "csv") {
+      const { Parser } = require("json2csv");
+      const fields = reportType === "performance"
+        ? ["inspectorName", "casesHandled", "totalEarnings", "timeSpentHours"]
+        : ["platformRevenue", "totalPayouts", "refundsIssued", "netRevenue"];
+      
+      const parser = new Parser({ fields });
+      const csv = reportType === "performance"
+        ? parser.parse(data.inspectorPerformance || [])
+        : parser.parse([data]);
+      
+      res.setHeader("Content-Disposition", `attachment; filename=${reportType}_report.csv`);
+      res.setHeader("Content-Type", "text/csv");
+      return res.status(200).send(csv);
+    }
+
+    if (format === "pdf" || format === "excel") {
+      // For PDF/Excel, use similar approach as dashboard export
+      const PDFDocument = require("pdfkit");
+      const doc = new PDFDocument();
+      
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=${reportType}_report.pdf`
+      );
+      res.setHeader("Content-Type", "application/pdf");
+      
+      doc.pipe(res);
+      doc.fontSize(18).text(`${reportType.toUpperCase()} Report`, { align: "center" });
+      doc.moveDown();
+      
+      if (reportType === "performance") {
+        doc.fontSize(14).text("Case Metrics", { underline: true });
+        doc.fontSize(12).text(`Total Submitted: ${data.caseMetrics?.totalSubmitted || 0}`);
+        doc.text(`Total Completed: ${data.caseMetrics?.totalCompleted || 0}`);
+        doc.text(`Total Canceled: ${data.caseMetrics?.totalCanceled || 0}`);
+        doc.text(`Average Resolution Time: ${data.caseMetrics?.averageResolutionTime || 0} days`);
+        doc.moveDown();
+        doc.fontSize(14).text("Inspector Performance", { underline: true });
+        data.inspectorPerformance?.forEach((inspector) => {
+          doc.fontSize(12).text(
+            `${inspector.inspectorName}: ${inspector.casesHandled} cases, ${inspector.totalEarnings} kr`
+          );
+        });
+      } else {
+        doc.fontSize(12).text(`Platform Revenue: ${data.platformRevenue || 0} kr`);
+        doc.text(`Total Payouts: ${data.totalPayouts || 0} kr`);
+        doc.text(`Refunds Issued: ${data.refundsIssued || 0} kr`);
+        doc.text(`Net Revenue: ${data.netRevenue || 0} kr`);
+      }
+      
+      doc.end();
+      return;
+    }
+
+    throw new Error("Unsupported format");
+  } catch (error) {
+    console.error("Error in exportReport:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   getAdminDashboardData,
   getAllAdmins,
@@ -409,4 +695,7 @@ module.exports = {
   generateDashboardCSV,
   generateDashboardPDF,
   updateInspectorDetails,
+  getPerformanceMetrics,
+  getEarningsReport,
+  exportReport,
 };

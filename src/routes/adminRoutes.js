@@ -565,4 +565,51 @@ router.get(
   adminController.getEarningsReport
 );
 
+/**
+ * @swagger
+ * /admins/reports/export:
+ *   get:
+ *     summary: Export reports (performance or earnings)
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Admins]
+ *     parameters:
+ *       - in: query
+ *         name: reportType
+ *         schema:
+ *           type: string
+ *           enum: [performance, earnings]
+ *         required: true
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [csv, pdf, excel]
+ *         required: true
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *         description: Period for earnings report
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Report exported successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get(
+  "/reports/export",
+  authMiddleware,
+  authorizeRoles("admin", "sub-admin"),
+  adminController.exportReport
+);
+
 module.exports = router;

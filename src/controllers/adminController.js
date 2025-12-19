@@ -237,18 +237,9 @@ exports.exportDashboardReport = async (req, res) => {
 exports.getPerformanceMetrics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+    const adminService = require("../services/adminService");
     
-    // TODO: Implement performance metrics calculation
-    // For now, return placeholder data
-    const metrics = {
-      totalCases: 0,
-      completedCases: 0,
-      averageCompletionTime: 0,
-      totalRevenue: 0,
-      totalPayouts: 0,
-      activeInspectors: 0,
-      activeTenants: 0,
-    };
+    const metrics = await adminService.getPerformanceMetrics({ startDate, endDate });
 
     responseHandler.setSuccess(200, "Performance metrics retrieved successfully", metrics);
     return responseHandler.send(res);
@@ -281,16 +272,9 @@ exports.fixPropertyUuid = async (req, res) => {
 exports.getEarningsReport = async (req, res) => {
   try {
     const { period = "monthly", startDate, endDate } = req.query;
+    const adminService = require("../services/adminService");
     
-    // TODO: Implement earnings report calculation
-    // For now, return placeholder data
-    const earnings = {
-      period,
-      totalRevenue: 0,
-      totalPayouts: 0,
-      netEarnings: 0,
-      data: [],
-    };
+    const earnings = await adminService.getEarningsReport({ period, startDate, endDate });
 
     responseHandler.setSuccess(200, "Earnings report retrieved successfully", earnings);
     return responseHandler.send(res);
@@ -317,6 +301,41 @@ exports.updateInspectorByAdmin = async (req, res) => {
     return responseHandler.send(res);
   } catch (error) {
     console.error("Error updating inspector:", error);
+    responseHandler.setError(500, "Internal server error");
+    return responseHandler.send(res);
+  }
+};
+
+exports.exportReport = async (req, res) => {
+  try {
+    const { reportType, format, period, startDate, endDate } = req.query;
+    const adminService = require("../services/adminService");
+
+    if (!reportType || !format) {
+      responseHandler.setError(400, "reportType and format are required");
+      return responseHandler.send(res);
+    }
+
+    if (!["performance", "earnings"].includes(reportType)) {
+      responseHandler.setError(400, "Invalid reportType. Must be 'performance' or 'earnings'");
+      return responseHandler.send(res);
+    }
+
+    if (!["csv", "pdf", "excel"].includes(format)) {
+      responseHandler.setError(400, "Invalid format. Must be 'csv', 'pdf', or 'excel'");
+      return responseHandler.send(res);
+    }
+
+    await adminService.exportReport({
+      reportType,
+      format,
+      period,
+      startDate,
+      endDate,
+      res,
+    });
+  } catch (error) {
+    console.error("Error exporting report:", error);
     responseHandler.setError(500, "Internal server error");
     return responseHandler.send(res);
   }
