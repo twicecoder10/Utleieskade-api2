@@ -520,7 +520,7 @@ router.get(
 router.get(
   "/getCases",
   authMiddleware,
-  authorizeRoles("tenant"),
+  authorizeRoles("tenant", "landlord"),
   tenantController.getCases
 );
 
