@@ -255,7 +255,7 @@ const getCaseDetails = async (caseId) => {
         model: CaseTimeline,
         as: "timeline",
         separate: true,
-        order: [["eventTimestamp", "ASC"]],
+        order: [["eventTimestamp", "DESC"]],
         required: false,
       },
       {
