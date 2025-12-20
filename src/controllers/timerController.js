@@ -92,22 +92,27 @@ exports.startTimer = async (req, res) => {
     // Try to create using raw SQL with different column combinations
     // Handle both TIME and TIMESTAMP/DATE column types
     // trackingTimeEnd should be NULL when starting a timer (it gets set when stopping)
+    // Try without caseId first since it may not exist in the database
     const attempts = [
-      // Attempt 1: With caseId and isActive, trackingTimeEnd is NULL (timer just started)
-      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, $3, NOW(), NOW()) RETURNING *`,
-      // Attempt 2: Without isActive
-      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, NOW(), NOW()) RETURNING *`,
-      // Attempt 3: Without caseId and isActive
+      // Attempt 1: Without caseId and isActive (most compatible - works if columns don't exist)
       `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
        VALUES (gen_random_uuid(), $1, NOW(), NULL, NOW(), NOW()) RETURNING *`,
+      // Attempt 2: With isActive but without caseId
+      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, NOW(), NULL, $2, NOW(), NOW()) RETURNING *`,
+      // Attempt 3: With caseId but without isActive
+      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, NOW(), NOW()) RETURNING *`,
+      // Attempt 4: With both caseId and isActive
+      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, $3, NOW(), NOW()) RETURNING *`,
     ];
     
     const attemptParams = [
-      [caseId, inspectorId, true],
-      [caseId, inspectorId],
       [inspectorId],
+      [inspectorId, true],
+      [caseId, inspectorId],
+      [caseId, inspectorId, true],
     ];
     
     let lastError = null;
