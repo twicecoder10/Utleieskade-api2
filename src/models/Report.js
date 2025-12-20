@@ -12,6 +12,7 @@ const Report = sequelize.define(
     inspectorId: { type: DataTypes.STRING, allowNull: false },
     caseId: { type: DataTypes.STRING, allowNull: false },
     reportDescription: { type: DataTypes.STRING, allowNull: false },
+    pdfUrl: { type: DataTypes.STRING, allowNull: true },
   },
   { tableName: "Report", timestamps: true }
 );

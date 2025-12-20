@@ -13,6 +13,7 @@ const {
 } = require("../models/index");
 const { Op } = require("sequelize");
 const { generateUniqueId } = require("../utils/uniqueIdGenerator");
+const { generateReportPDF } = require("../utils/generateReportPDF");
 
 const createCase = async (caseData) => {
   const {
@@ -488,6 +489,39 @@ const reportAssessment = async (reportData) => {
       `Case completed with assessment report`
     );
 
+    // Generate PDF and upload to Azure
+    try {
+      // Get full case details for PDF generation
+      const fullCaseData = await getCaseDetails(caseId);
+      
+      if (fullCaseData) {
+        // Generate PDF with report data
+        const pdfUrl = await generateReportPDF(
+          {
+            reportDescription: reportDescription || "",
+            photos: photos || [],
+            items: items || [],
+            summary: summary || null,
+          },
+          fullCaseData,
+          newReport.reportId
+        );
+
+        // Update report with PDF URL
+        await newReport.update({ pdfUrl });
+        console.log(`✅ PDF generated and saved for report ${newReport.reportId}`);
+      } else {
+        console.warn(`⚠️  Could not fetch case details for PDF generation for case ${caseId}`);
+      }
+    } catch (pdfError) {
+      console.error("❌ Error generating PDF for report:", pdfError);
+      // Don't fail the report creation if PDF generation fails
+      // The report will be created without PDF URL
+      console.warn("⚠️  Report created successfully but PDF generation failed. PDF can be generated later.");
+    }
+
+    // Return updated report with PDF URL
+    await newReport.reload();
     return newReport;
   } catch (error) {
     console.error("Error in reportAssessment service:", error);
