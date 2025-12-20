@@ -16,13 +16,13 @@ exports.getActionLogs = async (req, res) => {
 
     // TODO: Implement action log retrieval from database
     // For now, return empty array
-    const actionLogs = [];
-    const totalLogs = 0;
+    const logs = [];
+    const total = 0;
 
     responseHandler.setSuccess(200, "Action logs retrieved successfully", {
-      actionLogs,
-      totalLogs,
-      totalPages: Math.ceil(totalLogs / limit),
+      logs,
+      total,
+      totalPages: Math.ceil(total / limit),
       currentPage: parseInt(page),
     });
     return responseHandler.send(res);

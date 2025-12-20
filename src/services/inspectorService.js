@@ -788,25 +788,38 @@ const getReportPreview = async (caseId, inspectorId) => {
 };
 
 const deleteReport = async (reportId, inspectorId) => {
-  const { Report, AssessmentItem, AssessmentSummary, ReportPhoto } = require("../models/index");
-  
-  const report = await Report.findOne({
-    where: { reportId, inspectorId },
-  });
+  try {
+    const { Report, AssessmentItem, AssessmentSummary, ReportPhoto } = require("../models/index");
+    
+    const report = await Report.findOne({
+      where: { reportId, inspectorId },
+    });
 
-  if (!report) {
-    return null;
+    if (!report) {
+      return null;
+    }
+
+    // Delete related data - check if models exist before destroying
+    if (AssessmentItem && typeof AssessmentItem.destroy === 'function') {
+      await AssessmentItem.destroy({ where: { reportId } });
+    }
+    if (AssessmentSummary && typeof AssessmentSummary.destroy === 'function') {
+      await AssessmentSummary.destroy({ where: { reportId } });
+    }
+    if (ReportPhoto && typeof ReportPhoto.destroy === 'function') {
+      await ReportPhoto.destroy({ where: { reportId } });
+    }
+    
+    // Delete the report
+    if (report && typeof report.destroy === 'function') {
+      await report.destroy();
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in deleteReport service:", error);
+    throw error;
   }
-
-  // Delete related data
-  await AssessmentItem.destroy({ where: { reportId } });
-  await AssessmentSummary.destroy({ where: { reportId } });
-  await ReportPhoto.destroy({ where: { reportId } });
-  
-  // Delete the report
-  await report.destroy();
-
-  return { success: true };
 };
 
 const getReportPdf = async (reportId, inspectorId) => {
