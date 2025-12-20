@@ -25,9 +25,14 @@ const PlatformSettings = sequelize.define(
       defaultValue: 30,
       allowNull: false,
     },
+    basePrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 100.0,
+      allowNull: false,
+    },
     hasteCaseFee: {
       type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0.0,
+      defaultValue: 50.0,
       allowNull: false,
     },
     hasteCaseDeadlineDays: {

@@ -524,4 +524,48 @@ router.get(
   tenantController.getCases
 );
 
+/**
+ * @swagger
+ * /tenants/platform-settings:
+ *   get:
+ *     summary: Get platform pricing settings for tenants
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Tenants]
+ *     description: Retrieve platform pricing settings (basePrice and hasteCaseFee) for pricing calculations.
+ *     responses:
+ *       200:
+ *         description: Platform pricing settings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Platform pricing settings retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     basePrice:
+ *                       type: number
+ *                       example: 100.0
+ *                     hasteCaseFee:
+ *                       type: number
+ *                       example: 50.0
+ *       401:
+ *         description: Unauthorized - Missing or invalid token
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/platform-settings",
+  authMiddleware,
+  authorizeRoles("tenant", "landlord"),
+  tenantController.getPlatformPricingSettings
+);
+
 module.exports = router;

@@ -256,3 +256,35 @@ exports.updateTenantSettings = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.getPlatformPricingSettings = async (req, res) => {
+  try {
+    const { PlatformSettings } = require("../models/index");
+    
+    let settings = await PlatformSettings.findByPk("PLATFORM_SETTINGS");
+
+    // If settings don't exist, create default settings
+    if (!settings) {
+      settings = await PlatformSettings.create({
+        settingId: "PLATFORM_SETTINGS",
+      });
+    }
+
+    // Return only pricing-related settings
+    const pricingSettings = {
+      basePrice: parseFloat(settings.basePrice) || 100.0,
+      hasteCaseFee: parseFloat(settings.hasteCaseFee) || 50.0,
+    };
+
+    responseHandler.setSuccess(
+      200,
+      "Platform pricing settings retrieved successfully",
+      pricingSettings
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error fetching platform pricing settings:", error);
+    responseHandler.setError(500, error.message);
+    return responseHandler.send(res);
+  }
+};
