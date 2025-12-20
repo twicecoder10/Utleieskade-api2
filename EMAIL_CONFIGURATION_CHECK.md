@@ -118,3 +118,4 @@ curl -X POST https://utleieskade-api2-production-2915.up.railway.app/users/send-
 **Last Updated**: December 6, 2025  
 **Status**: Error handling improved, email configuration check added
 
+

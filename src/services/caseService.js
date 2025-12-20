@@ -491,33 +491,67 @@ const reportAssessment = async (reportData) => {
 
     // Generate PDF and upload to Azure
     try {
+      console.log(`🔄 Starting PDF generation for report ${newReport.reportId}, case ${caseId}`);
+      
       // Get full case details for PDF generation
       const fullCaseData = await getCaseDetails(caseId);
       
-      if (fullCaseData) {
-        // Generate PDF with report data
-        const pdfUrl = await generateReportPDF(
-          {
-            reportDescription: reportDescription || "",
-            photos: photos || [],
-            items: items || [],
-            summary: summary || null,
-          },
-          fullCaseData,
-          newReport.reportId
-        );
+      if (!fullCaseData) {
+        console.error(`❌ Could not fetch case details for PDF generation for case ${caseId}`);
+        throw new Error(`Case details not found for case ${caseId}`);
+      }
 
-        // Update report with PDF URL
+      console.log(`✅ Case details retrieved for PDF generation`);
+
+      // Generate PDF with report data
+      console.log(`🔄 Generating PDF...`);
+      const pdfUrl = await generateReportPDF(
+        {
+          reportDescription: reportDescription || "",
+          photos: photos || [],
+          items: items || [],
+          summary: summary || null,
+        },
+        fullCaseData,
+        newReport.reportId
+      );
+
+      if (!pdfUrl) {
+        throw new Error("PDF generation returned null or undefined URL");
+      }
+
+      console.log(`✅ PDF generated successfully, URL: ${pdfUrl}`);
+
+      // Update report with PDF URL
+      try {
         await newReport.update({ pdfUrl });
-        console.log(`✅ PDF generated and saved for report ${newReport.reportId}`);
-      } else {
-        console.warn(`⚠️  Could not fetch case details for PDF generation for case ${caseId}`);
+        console.log(`✅ PDF URL saved to database for report ${newReport.reportId}: ${pdfUrl}`);
+      } catch (updateError) {
+        console.error(`❌ Error updating report with PDF URL:`, updateError);
+        console.error(`❌ Update error details:`, {
+          message: updateError.message,
+          stack: updateError.stack,
+          reportId: newReport.reportId,
+          pdfUrl: pdfUrl,
+        });
+        // Check if it's a column not found error
+        if (updateError.message && (updateError.message.includes('column') && updateError.message.includes('does not exist'))) {
+          console.error(`❌ Database column 'pdfUrl' does not exist. Please run the migration: addReportPdfUrlColumn.sql`);
+        }
+        throw updateError;
       }
     } catch (pdfError) {
       console.error("❌ Error generating PDF for report:", pdfError);
+      console.error("❌ PDF error details:", {
+        message: pdfError.message,
+        stack: pdfError.stack,
+        reportId: newReport.reportId,
+        caseId: caseId,
+      });
       // Don't fail the report creation if PDF generation fails
       // The report will be created without PDF URL
       console.warn("⚠️  Report created successfully but PDF generation failed. PDF can be generated later.");
+      // Re-throw to see the error in logs, but don't fail the report creation
     }
 
     // Return updated report with PDF URL

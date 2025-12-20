@@ -22,3 +22,4 @@ FROM information_schema.columns
 WHERE table_name = 'Property' 
 AND column_name = 'propertyId';
 
+

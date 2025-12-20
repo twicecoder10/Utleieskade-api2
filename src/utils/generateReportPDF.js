@@ -9,8 +9,11 @@ const { uploadToAzure } = require("./azureStorage");
  * @returns {Promise<string>} - Azure URL of the uploaded PDF
  */
 const generateReportPDF = async (reportData, caseData, reportId) => {
+  console.log(`🔄 generateReportPDF called for reportId: ${reportId}, caseId: ${caseData?.caseId}`);
+  
   return new Promise((resolve, reject) => {
     try {
+      console.log(`🔄 Creating PDFDocument...`);
       const doc = new PDFDocument({
         size: "A4",
         margins: { top: 50, bottom: 50, left: 50, right: 50 },
@@ -18,15 +21,21 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
 
       // Collect PDF chunks
       const chunks = [];
-      doc.on("data", (chunk) => chunks.push(chunk));
+      doc.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+      
       doc.on("end", async () => {
         try {
+          console.log(`🔄 PDF document ended, combining ${chunks.length} chunks...`);
           // Combine all chunks into a buffer
           const pdfBuffer = Buffer.concat(chunks);
+          console.log(`✅ PDF buffer created, size: ${pdfBuffer.length} bytes`);
 
           // Generate filename
           const reportNumber = `RPT-${caseData.caseId || "N/A"}-${new Date().toISOString().split("T")[0].replace(/-/g, "")}`;
           const fileName = `${reportNumber}.pdf`;
+          console.log(`🔄 Uploading PDF to Azure with filename: ${fileName}`);
 
           // Upload to Azure
           const pdfUrl = await uploadToAzure(
@@ -36,10 +45,19 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
             "Reports"
           );
 
+          if (!pdfUrl) {
+            throw new Error("uploadToAzure returned null or undefined URL");
+          }
+
           console.log(`✅ PDF generated and uploaded to Azure: ${pdfUrl}`);
           resolve(pdfUrl);
         } catch (uploadError) {
           console.error("❌ Error uploading PDF to Azure:", uploadError);
+          console.error("❌ Upload error details:", {
+            message: uploadError.message,
+            stack: uploadError.stack,
+            reportId: reportId,
+          });
           reject(uploadError);
         }
       });
@@ -336,9 +354,17 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
       );
 
       // Finalize PDF
+      console.log(`🔄 Finalizing PDF document...`);
       doc.end();
+      console.log(`✅ PDF document finalized`);
     } catch (error) {
       console.error("❌ Error in PDF generation:", error);
+      console.error("❌ PDF generation error details:", {
+        message: error.message,
+        stack: error.stack,
+        reportId: reportId,
+        caseId: caseData?.caseId,
+      });
       reject(error);
     }
   });
