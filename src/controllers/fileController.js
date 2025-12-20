@@ -25,10 +25,26 @@ exports.uploadFile = async (req, res) => {
       try {
         // Upload to Azure Blob Storage
         const fileBuffer = fs.readFileSync(req.file.path);
+        
+        // Determine folder based on file type
+        // Images go to photos/, PDFs go to Reports/
+        const contentType = req.file.mimetype || '';
+        const fileName = req.file.originalname || '';
+        const isImage = contentType.startsWith('image/');
+        const isPdf = contentType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
+        
+        let folder = null;
+        if (isImage) {
+          folder = 'photos';
+        } else if (isPdf) {
+          folder = 'Reports';
+        }
+        
         fileUrl = await uploadToAzure(
           fileBuffer,
           req.file.originalname,
-          req.file.mimetype
+          req.file.mimetype,
+          folder
         );
 
         // Delete local file after successful Azure upload
