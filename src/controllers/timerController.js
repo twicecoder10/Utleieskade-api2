@@ -91,17 +91,17 @@ exports.startTimer = async (req, res) => {
     
     // Try to create using raw SQL with different column combinations
     // Handle both TIME and TIMESTAMP/DATE column types
-    // Include trackingTimeEnd with a default value to satisfy NOT NULL constraint
+    // trackingTimeEnd should be NULL when starting a timer (it gets set when stopping)
     const attempts = [
-      // Attempt 1: With caseId and isActive, using NOW() for timestamp compatibility
+      // Attempt 1: With caseId and isActive, trackingTimeEnd is NULL (timer just started)
       `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW(), $3, NOW(), NOW()) RETURNING *`,
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, $3, NOW(), NOW()) RETURNING *`,
       // Attempt 2: Without isActive
       `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, NOW(), NOW(), NOW(), NOW()) RETURNING *`,
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, NOW(), NOW()) RETURNING *`,
       // Attempt 3: Without caseId and isActive
       `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, NOW(), NOW(), NOW(), NOW()) RETURNING *`,
+       VALUES (gen_random_uuid(), $1, NOW(), NULL, NOW(), NOW()) RETURNING *`,
     ];
     
     const attemptParams = [
@@ -155,16 +155,16 @@ exports.startTimer = async (req, res) => {
         
         // If this is the last attempt, try one more time with minimal fields
         if (i === attempts.length - 1) {
-          // Last resort: try with only inspectorId, using CURRENT_TIME for TIME columns
+          // Last resort: try with only inspectorId, trackingTimeEnd should be NULL
           try {
-            console.log("Trying final fallback with minimal fields and TIME compatibility");
+            console.log("Trying final fallback with minimal fields");
             const fallbackQueries = [
-              // Try with TIMESTAMP/DATE
-              `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
-               VALUES (gen_random_uuid(), $1, NOW(), NOW(), NOW()) RETURNING *`,
-              // Try with TIME (extract time portion)
-              `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "createdAt", "updatedAt") 
-               VALUES (gen_random_uuid(), $1, CURRENT_TIME, NOW(), NOW()) RETURNING *`,
+              // Try with TIMESTAMP/DATE - trackingTimeEnd is NULL when starting
+              `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
+               VALUES (gen_random_uuid(), $1, NOW(), NULL, NOW(), NOW()) RETURNING *`,
+              // Try with TIME (extract time portion) - trackingTimeEnd is NULL when starting
+              `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
+               VALUES (gen_random_uuid(), $1, CURRENT_TIME, NULL, NOW(), NOW()) RETURNING *`,
             ];
             
             for (const fallbackQuery of fallbackQueries) {
