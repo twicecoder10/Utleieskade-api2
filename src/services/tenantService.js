@@ -485,6 +485,18 @@ const getTenantCases = async (
         )`),
         "numPhotos",
       ],
+      [
+        Sequelize.literal(`(
+          SELECT "damagePhotos"."photoUrl"
+          FROM "Damage" AS "damages"
+          LEFT OUTER JOIN "DamagePhoto" AS "damagePhotos" ON "damages"."damageId" = "damagePhotos"."damageId"
+          WHERE "damages"."caseId" = "Case"."caseId"
+          AND "damagePhotos"."photoUrl" IS NOT NULL
+          ORDER BY "damagePhotos"."createdAt" ASC
+          LIMIT 1
+        )`),
+        "firstPhotoUrl",
+      ],
     ],
     include: [
       {
@@ -498,12 +510,14 @@ const getTenantCases = async (
         as: "damages",
         attributes: ["damageId", "damageLocation"],
         include: [
-          {
-            model: DamagePhoto,
-            as: "damagePhotos",
-            attributes: ["photoId"],
-            required: false,
-          },
+        {
+          model: DamagePhoto,
+          as: "damagePhotos",
+          attributes: ["photoId", "photoUrl", "photoType"],
+          required: false,
+          limit: 1,
+          order: [["createdAt", "ASC"]],
+        },
         ],
         required: false,
         separate: true, // Load damages separately to avoid GROUP BY issues
