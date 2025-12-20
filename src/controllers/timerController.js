@@ -90,29 +90,28 @@ exports.startTimer = async (req, res) => {
     let timerId;
     
     // Try to create using raw SQL with different column combinations
-    // Handle both TIME and TIMESTAMP/DATE column types
     // trackingTimeEnd should be NULL when starting a timer (it gets set when stopping)
-    // Try without caseId first since it may not exist in the database
+    // Now that caseId column exists, prioritize using it, but have fallbacks
     const attempts = [
-      // Attempt 1: Without caseId and isActive (most compatible - works if columns don't exist)
-      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, NOW(), NULL, NOW(), NOW()) RETURNING *`,
-      // Attempt 2: With isActive but without caseId
-      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, NOW(), NULL, $2, NOW(), NOW()) RETURNING *`,
-      // Attempt 3: With caseId but without isActive
-      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
-       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, NOW(), NOW()) RETURNING *`,
-      // Attempt 4: With both caseId and isActive
+      // Attempt 1: With both caseId and isActive (preferred - now that columns exist)
       `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
        VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, $3, NOW(), NOW()) RETURNING *`,
+      // Attempt 2: With caseId but without isActive
+      `INSERT INTO "TrackingTime" ("trackingId", "caseId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, $2, NOW(), NULL, NOW(), NOW()) RETURNING *`,
+      // Attempt 3: With isActive but without caseId (fallback if caseId column doesn't exist)
+      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "isActive", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, NOW(), NULL, $2, NOW(), NOW()) RETURNING *`,
+      // Attempt 4: Without caseId and isActive (most compatible fallback)
+      `INSERT INTO "TrackingTime" ("trackingId", "inspectorId", "trackingTimeStart", "trackingTimeEnd", "createdAt", "updatedAt") 
+       VALUES (gen_random_uuid(), $1, NOW(), NULL, NOW(), NOW()) RETURNING *`,
     ];
     
     const attemptParams = [
-      [inspectorId],
-      [inspectorId, true],
-      [caseId, inspectorId],
       [caseId, inspectorId, true],
+      [caseId, inspectorId],
+      [inspectorId, true],
+      [inspectorId],
     ];
     
     let lastError = null;
@@ -235,7 +234,11 @@ exports.stopTimer = async (req, res) => {
 
     // Find active timer for this case
     // Handle case where caseId or isActive columns might not exist yet
+    // Also handle case where timer was created without caseId (NULL)
     let activeTimer = null;
+    
+    // Try multiple strategies to find the active timer
+    // Strategy 1: Try with caseId and isActive (ideal case)
     try {
       activeTimer = await TrackingTime.findOne({
         where: {
@@ -243,49 +246,53 @@ exports.stopTimer = async (req, res) => {
           inspectorId,
           isActive: true,
         },
+        order: [["trackingTimeStart", "DESC"]],
       });
-    } catch (dbError) {
-      const errorMsg = dbError.message || String(dbError);
-      const hasCaseIdError = errorMsg.includes("caseId") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
-      const hasIsActiveError = errorMsg.includes("isActive") && (errorMsg.includes("does not exist") || errorMsg.includes("column") || errorMsg.includes("unknown column"));
-      
-      console.warn("Database error finding active timer:", errorMsg);
-      
-      if (hasCaseIdError || hasIsActiveError) {
-        // Build where clause without missing columns
-        const whereClause = { inspectorId };
-        if (!hasCaseIdError) {
-          whereClause.caseId = caseId;
-        }
-        
-        // Try with isActive first
+    } catch (err) {
+      // Column might not exist, continue to next strategy
+    }
+    
+    // Strategy 2: If not found, try with caseId but without isActive (use trackingTimeEnd null)
+    if (!activeTimer) {
+      try {
+        activeTimer = await TrackingTime.findOne({
+          where: {
+            caseId,
+            inspectorId,
+            trackingTimeEnd: null,
+          },
+          order: [["trackingTimeStart", "DESC"]],
+        });
+      } catch (err) {
+        // Column might not exist, continue to next strategy
+      }
+    }
+    
+    // Strategy 3: If still not found, try without caseId (timer was created without caseId)
+    // This handles the case where caseId column doesn't exist or timer has NULL caseId
+    if (!activeTimer) {
+      try {
+        // First try with isActive
+        activeTimer = await TrackingTime.findOne({
+          where: {
+            inspectorId,
+            isActive: true,
+          },
+          order: [["trackingTimeStart", "DESC"]],
+        });
+      } catch (err) {
+        // If isActive doesn't exist, try with trackingTimeEnd null
         try {
-          whereClause.isActive = true;
           activeTimer = await TrackingTime.findOne({
-            where: whereClause,
+            where: {
+              inspectorId,
+              trackingTimeEnd: null,
+            },
+            order: [["trackingTimeStart", "DESC"]],
           });
-        } catch (isActiveErr) {
-          const isActiveErrMsg = isActiveErr.message || String(isActiveErr);
-          if (isActiveErrMsg.includes("isActive") && (isActiveErrMsg.includes("does not exist") || isActiveErrMsg.includes("column") || isActiveErrMsg.includes("unknown column"))) {
-            // If isActive doesn't exist, use trackingTimeEnd null
-            delete whereClause.isActive;
-            whereClause.trackingTimeEnd = null;
-            try {
-              activeTimer = await TrackingTime.findOne({
-                where: whereClause,
-              });
-            } catch (finalErr) {
-              console.warn("Could not find active timer with fallback:", finalErr.message);
-              activeTimer = null;
-            }
-          } else {
-            console.warn("Error finding active timer:", isActiveErrMsg);
-            activeTimer = null;
-          }
+        } catch (err2) {
+          // Both approaches failed
         }
-      } else {
-        console.error("Unexpected error finding active timer:", errorMsg);
-        activeTimer = null;
       }
     }
 
