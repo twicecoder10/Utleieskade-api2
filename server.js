@@ -52,6 +52,14 @@ const PORT = process.env.PORT || 3000;
         } catch (actionLogError) {
           console.error("⚠️ ActionLog migration error (non-fatal):", actionLogError.message);
         }
+        // Add inspector action types to ActionLog enum
+        try {
+          const addInspectorActionTypesToEnum = require("./src/migrations/addInspectorActionTypesToEnum");
+          await addInspectorActionTypesToEnum();
+          console.log("✅ ActionLog enum migration check completed");
+        } catch (enumError) {
+          console.error("⚠️ ActionLog enum migration error (non-fatal):", enumError.message);
+        }
         // Run Case Status Enum fix
         try {
           const fixCaseStatusEnum = require("./src/utils/fixCaseStatusEnum");
