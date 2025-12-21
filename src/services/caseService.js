@@ -524,6 +524,7 @@ const reportAssessment = async (reportData) => {
 
       // Update report with PDF URL
       try {
+        // Try to update using Sequelize update method
         await newReport.update({ pdfUrl });
         console.log(`✅ PDF URL saved to database for report ${newReport.reportId}: ${pdfUrl}`);
       } catch (updateError) {
@@ -533,12 +534,23 @@ const reportAssessment = async (reportData) => {
           stack: updateError.stack,
           reportId: newReport.reportId,
           pdfUrl: pdfUrl,
+          errorName: updateError.name,
         });
+        
         // Check if it's a column not found error
-        if (updateError.message && (updateError.message.includes('column') && updateError.message.includes('does not exist'))) {
-          console.error(`❌ Database column 'pdfUrl' does not exist. Please run the migration: addReportPdfUrlColumn.sql`);
+        const errorMessage = updateError.message || '';
+        const isColumnError = errorMessage.includes('column') && 
+                             (errorMessage.includes('does not exist') || errorMessage.includes('unknown column'));
+        
+        if (isColumnError) {
+          console.error(`❌ CRITICAL: Database column 'pdfUrl' does not exist in 'Report' table!`);
+          console.error(`❌ Please run the migration: src/migrations/addReportPdfUrlColumn.sql`);
+          console.error(`❌ The report was created successfully, but PDF URL could not be saved.`);
+          // Don't throw - allow report to be created without PDF URL
+        } else {
+          // For other errors, log but don't fail the report creation
+          console.warn(`⚠️  Could not save PDF URL to database, but report was created successfully.`);
         }
-        throw updateError;
       }
     } catch (pdfError) {
       console.error("❌ Error generating PDF for report:", pdfError);
@@ -547,11 +559,16 @@ const reportAssessment = async (reportData) => {
         stack: pdfError.stack,
         reportId: newReport.reportId,
         caseId: caseId,
+        errorName: pdfError.name,
+        errorCode: pdfError.code,
       });
       // Don't fail the report creation if PDF generation fails
       // The report will be created without PDF URL
       console.warn("⚠️  Report created successfully but PDF generation failed. PDF can be generated later.");
-      // Re-throw to see the error in logs, but don't fail the report creation
+      // Check if it's a database column error
+      if (pdfError.message && pdfError.message.includes("column") && pdfError.message.includes("does not exist")) {
+        console.error("❌ CRITICAL: Database column 'pdfUrl' does not exist! Please run the migration: addReportPdfUrlColumn.sql");
+      }
     }
 
     // Return updated report with PDF URL
