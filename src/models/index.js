@@ -560,6 +560,11 @@ InspectorPayment.belongsTo(BankDetails, {
   targetKey: "userId",
   as: "bankDetails",
 });
+InspectorPayment.belongsTo(Case, {
+  foreignKey: "caseId",
+  as: "case",
+  allowNull: true,
+});
 
 Payment.belongsTo(Case, { foreignKey: "caseId", onDelete: "CASCADE" });
 

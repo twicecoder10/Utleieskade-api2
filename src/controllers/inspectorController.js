@@ -298,14 +298,20 @@ exports.getInspectorEarnings = async (req, res) => {
 
 exports.requestPayout = async (req, res) => {
   try {
-    const { amount, userPassword } = req.body;
+    const { amount, userPassword, paymentId } = req.body;
     const { id: inspectorId } = req.user;
 
     const result = await inspectorService.requestPayout({
       inspectorId,
       amount,
       userPassword,
+      paymentId, // Optional: if provided, request payout for specific payment
     });
+
+    if (!result.success) {
+      responseHandler.setError(400, result.message);
+      return responseHandler.send(res);
+    }
 
     responseHandler.setSuccess(200, result.message);
     return responseHandler.send(res);

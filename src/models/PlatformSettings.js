@@ -55,6 +55,12 @@ const PlatformSettings = sequelize.define(
       defaultValue: 365,
       allowNull: false,
     },
+    inspectorPercentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      defaultValue: 40.0,
+      allowNull: false,
+      comment: "Percentage of case cost that goes to inspector (e.g., 40.00 for 40%)",
+    },
   },
   { tableName: "PlatformSettings", timestamps: true }
 );

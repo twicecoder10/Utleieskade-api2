@@ -10,6 +10,8 @@ const {
   AssessmentItem,
   AssessmentSummary,
   Payment,
+  InspectorPayment,
+  PlatformSettings,
 } = require("../models/index");
 const { Op } = require("sequelize");
 const { generateUniqueId } = require("../utils/uniqueIdGenerator");
@@ -522,6 +524,42 @@ const reportAssessment = async (reportData) => {
       { caseStatus: "completed" },
       { where: { caseId } }
     );
+
+    // Calculate and create inspector earnings
+    try {
+      // Get the case payment to find the case cost
+      const casePayment = await Payment.findOne({
+        where: { caseId },
+        order: [["createdAt", "DESC"]],
+      });
+
+      if (casePayment && casePayment.paymentAmount) {
+        // Get inspector percentage from platform settings
+        const platformSettings = await PlatformSettings.findByPk("PLATFORM_SETTINGS");
+        const inspectorPercentage = platformSettings?.inspectorPercentage || 40.0; // Default to 40%
+
+        // Calculate inspector's share
+        const caseCost = parseFloat(casePayment.paymentAmount);
+        const inspectorShare = (caseCost * inspectorPercentage) / 100;
+
+        // Create InspectorPayment record with status "pending"
+        await InspectorPayment.create({
+          inspectorId,
+          caseId,
+          paymentAmount: inspectorShare,
+          paymentDate: new Date(),
+          paymentStatus: "pending",
+        });
+
+        console.log(`✅ Created inspector earnings: ${inspectorShare} kr (${inspectorPercentage}% of ${caseCost} kr) for case ${caseId}`);
+      } else {
+        console.warn(`⚠️ No payment found for case ${caseId}, skipping inspector earnings creation`);
+      }
+    } catch (earningsError) {
+      console.error("❌ Error creating inspector earnings:", earningsError);
+      // Don't fail the report creation if earnings creation fails
+      console.warn("⚠️ Report created successfully but inspector earnings creation failed");
+    }
 
     // Log the event
     await logCaseEvent(

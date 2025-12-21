@@ -382,6 +382,7 @@ const getInspectorCases = async ({
 
 const getInspectorEarnings = async (inspectorId) => {
   try {
+    const { Case } = require("../models/index");
     const isPostgres = InspectorPayment.sequelize.getDialect() === "postgres";
     let totalBalance;
     
@@ -406,25 +407,52 @@ const getInspectorEarnings = async (inspectorId) => {
       }) || 0;
     }
 
-  const payoutHistory = await InspectorPayment.findAll({
-    where: { inspectorId },
-    attributes: [
-      ["paymentDate", "date"],
-      ["paymentId", "referenceNumber"],
-      ["paymentAmount", "amount"],
-      ["paymentStatus", "status"],
-    ],
-    order: [["paymentDate", "DESC"]],
-    raw: true,
-    }) || [];
+    // Get all payments with case details
+    const payments = await InspectorPayment.findAll({
+      where: { inspectorId },
+      include: [
+        {
+          model: Case,
+          as: "case",
+          attributes: ["caseId", "caseDescription", "caseStatus", "createdAt"],
+          required: false,
+        },
+      ],
+      order: [["paymentDate", "DESC"]],
+    });
 
-  return {
-      totalBalance,
-      payoutHistory: payoutHistory.map((payment) => ({
-        ...payment,
-        amount: payment.amount || 0,
-        cases: 0, // TODO: Add case count if needed
-      })),
+    // Format case earnings list (only pending payments for individual case earnings)
+    const caseEarnings = payments
+      .filter((p) => p.paymentStatus === "pending")
+      .map((payment) => {
+        const paymentData = payment.toJSON ? payment.toJSON() : payment;
+        return {
+          paymentId: paymentData.paymentId,
+          caseId: paymentData.caseId,
+          caseDescription: paymentData.case?.caseDescription || "N/A",
+          earnings: parseFloat(paymentData.paymentAmount) || 0,
+          status: paymentData.paymentStatus,
+          completedDate: paymentData.case?.createdAt || paymentData.paymentDate,
+        };
+      });
+
+    // Format payout history (all statuses)
+    const payoutHistory = payments.map((payment) => {
+      const paymentData = payment.toJSON ? payment.toJSON() : payment;
+      return {
+        date: paymentData.paymentDate,
+        referenceNumber: paymentData.paymentId,
+        amount: parseFloat(paymentData.paymentAmount) || 0,
+        status: paymentData.paymentStatus,
+        caseId: paymentData.caseId,
+        caseDescription: paymentData.case?.caseDescription || null,
+      };
+    });
+
+    return {
+      totalBalance: parseFloat(totalBalance) || 0,
+      caseEarnings,
+      payoutHistory,
     };
   } catch (error) {
     console.error("Error in getInspectorEarnings:", error);
@@ -432,7 +460,7 @@ const getInspectorEarnings = async (inspectorId) => {
   }
 };
 
-const requestPayout = async ({ inspectorId, amount, userPassword }) => {
+const requestPayout = async ({ inspectorId, amount, userPassword, paymentId }) => {
   const inspector = await User.findOne({
     where: { userId: inspectorId, userType: "inspector" },
     attributes: ["userPassword"],
@@ -456,6 +484,40 @@ const requestPayout = async ({ inspectorId, amount, userPassword }) => {
     };
   }
 
+  // If paymentId is provided, request payout for specific payment
+  if (paymentId) {
+    const payment = await InspectorPayment.findOne({
+      where: {
+        paymentId,
+        inspectorId,
+        paymentStatus: "pending",
+      },
+    });
+
+    if (!payment) {
+      return {
+        success: false,
+        message: "Payment not found or not available for payout",
+      };
+    }
+
+    const paymentAmount = parseFloat(payment.paymentAmount);
+    if (parseFloat(amount) !== paymentAmount) {
+      return {
+        success: false,
+        message: `Invalid payout amount. Expected ${paymentAmount} kr for this payment.`,
+      };
+    }
+
+    await payment.update({ paymentStatus: "requested" });
+
+    return {
+      success: true,
+      message: `Payout request successful for ${paymentAmount} kr. Your payment is being processed.`,
+    };
+  }
+
+  // Otherwise, request payout for all pending payments (backward compatibility)
   const isPostgres = InspectorPayment.sequelize.getDialect() === "postgres";
   let pendingBalance;
   

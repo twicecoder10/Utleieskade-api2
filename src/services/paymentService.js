@@ -1,4 +1,4 @@
-const { InspectorPayment, User, BankDetails } = require("../models/index");
+const { InspectorPayment, User, BankDetails, Case } = require("../models/index");
 const { Op, Sequelize } = require("sequelize");
 const PDFDocument = require("pdfkit");
 
@@ -70,6 +70,12 @@ const getPayments = async ({
             ],
           ],
         },
+        {
+          model: Case,
+          as: "case",
+          attributes: ["caseId", "caseDescription"],
+          required: false,
+        },
       ],
       limit: parseInt(limit),
       offset,
@@ -106,12 +112,20 @@ const getPaymentById = async (paymentId) => {
           },
         ],
       },
+      {
+        model: Case,
+        as: "case",
+        attributes: ["caseId", "caseDescription"],
+        required: false,
+      },
     ],
     attributes: [
       "paymentId",
       "paymentDate",
+      "paymentAmount",
       "paymentStatus",
       "rejectionReason",
+      "caseId",
     ],
   });
 };
