@@ -24,6 +24,7 @@ const Message = require("./Message");
 const UserExpertise = require("./UserExpertise");
 const AssessmentItem = require("./AssessmentItem");
 const AssessmentSummary = require("./AssessmentSummary");
+const ActionLog = require("./ActionLog");
 
 // Comprehensive migration function to fix all UUID/STRING mismatches
 // This ensures all foreign keys match their referenced primary key types
@@ -613,4 +614,5 @@ module.exports = {
   UserExpertise,
   AssessmentItem,
   AssessmentSummary,
+  ActionLog,
 };
