@@ -456,21 +456,55 @@ const reportAssessment = async (reportData) => {
           });
           console.log(`✅ Assessment summary updated for report ${newReport.reportId}`);
         } else {
-          // Create new record
-          await AssessmentSummary.create({
-            reportId: newReport.reportId,
-            totalHours: safeSummary.totalHours,
-            totalSumMaterials: safeSummary.totalSumMaterials,
-            totalSumLabor: safeSummary.totalSumLabor,
-            sumExclVAT: safeSummary.sumExclVAT,
-            vat: safeSummary.vat,
-            sumInclVAT: safeSummary.sumInclVAT,
-            total: safeSummary.total,
-          });
-          console.log(`✅ Assessment summary created for report ${newReport.reportId}`);
+          // Create new record - handle sequence sync issues
+          try {
+            await AssessmentSummary.create({
+              reportId: newReport.reportId,
+              totalHours: safeSummary.totalHours,
+              totalSumMaterials: safeSummary.totalSumMaterials,
+              totalSumLabor: safeSummary.totalSumLabor,
+              sumExclVAT: safeSummary.sumExclVAT,
+              vat: safeSummary.vat,
+              sumInclVAT: safeSummary.sumInclVAT,
+              total: safeSummary.total,
+            });
+            console.log(`✅ Assessment summary created for report ${newReport.reportId}`);
+          } catch (createError) {
+            // If unique constraint error on id (sequence out of sync), fix sequence and retry
+            if (createError.name === 'SequelizeUniqueConstraintError' && 
+                createError.errors && 
+                createError.errors.some(e => e.path === 'id')) {
+              console.warn("⚠️ Sequence out of sync, fixing and retrying...");
+              const { sequelize } = require("../models/index");
+              
+              // Reset the sequence to the max id + 1
+              await sequelize.query(`
+                SELECT setval(
+                  pg_get_serial_sequence('"AssessmentSummary"', 'id'),
+                  COALESCE((SELECT MAX(id) FROM "AssessmentSummary"), 0) + 1,
+                  false
+                );
+              `);
+              
+              // Retry create
+              await AssessmentSummary.create({
+                reportId: newReport.reportId,
+                totalHours: safeSummary.totalHours,
+                totalSumMaterials: safeSummary.totalSumMaterials,
+                totalSumLabor: safeSummary.totalSumLabor,
+                sumExclVAT: safeSummary.sumExclVAT,
+                vat: safeSummary.vat,
+                sumInclVAT: safeSummary.sumInclVAT,
+                total: safeSummary.total,
+              });
+              console.log(`✅ Assessment summary created for report ${newReport.reportId} (after sequence fix)`);
+            } else {
+              throw createError; // Re-throw if it's a different error
+            }
+          }
         }
       } catch (summaryError) {
-        console.error("Error upserting assessment summary:", summaryError);
+        console.error("Error creating/updating assessment summary:", summaryError);
         console.error("Summary error details:", {
           message: summaryError.message,
           stack: summaryError.stack,
@@ -478,37 +512,8 @@ const reportAssessment = async (reportData) => {
           errorName: summaryError.name,
         });
         
-        // If upsert fails, try the old destroy + create approach as fallback
-        try {
-          console.log("🔄 Attempting fallback: destroy + create");
-          await AssessmentSummary.destroy({ where: { reportId: newReport.reportId } });
-          
-          const safeSummary = {
-            totalHours: Number(summary.totalHours) || 0,
-            totalSumMaterials: Number(summary.totalSumMaterials) || 0,
-            totalSumLabor: Number(summary.totalSumLabor) || 0,
-            sumExclVAT: Number(summary.sumExclVAT) || 0,
-            vat: Number(summary.vat) || 0,
-            sumInclVAT: Number(summary.sumInclVAT) || 0,
-            total: Number(summary.total) || 0,
-          };
-          
-          await AssessmentSummary.create({
-            reportId: newReport.reportId,
-            totalHours: safeSummary.totalHours,
-            totalSumMaterials: safeSummary.totalSumMaterials,
-            totalSumLabor: safeSummary.totalSumLabor,
-            sumExclVAT: safeSummary.sumExclVAT,
-            vat: safeSummary.vat,
-            sumInclVAT: safeSummary.sumInclVAT,
-            total: safeSummary.total,
-          });
-          console.log(`✅ Assessment summary created (fallback) for report ${newReport.reportId}`);
-        } catch (fallbackError) {
-          console.error("Error in fallback summary creation:", fallbackError);
-          // Don't throw - allow report to be created even if summary fails
-          console.warn("Continuing without assessment summary due to error");
-        }
+        // If create/update fails, log but continue - report creation should not fail
+        console.warn("Continuing without assessment summary due to error");
       }
     }
 
