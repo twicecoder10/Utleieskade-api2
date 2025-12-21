@@ -342,8 +342,16 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
           total: Number(reportData.summary.total) || 0,
         };
 
-        // Draw Results title with underline - doc.y should be valid now
-        doc.fontSize(12).font("Helvetica-Bold").text("Results:", { underline: true });
+        // Draw Results title - avoid underline to prevent NaN coordinate issues
+        // Store current Y position before text
+        const resultsTitleY = doc.y;
+        doc.fontSize(12).font("Helvetica-Bold").text("Results:");
+        // Manually draw underline if doc.y is valid
+        if (!isNaN(resultsTitleY) && resultsTitleY >= 0 && !isNaN(doc.y) && doc.y >= 0) {
+          const textWidth = doc.widthOfString("Results:");
+          const startX = 50; // Left margin
+          doc.moveTo(startX, doc.y - 2).lineTo(startX + textWidth, doc.y - 2).stroke();
+        }
         doc.moveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
