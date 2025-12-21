@@ -1,6 +1,23 @@
 const { BlobServiceClient } = require("@azure/storage-blob");
 const path = require("path");
 
+// Ensure crypto is available globally (Azure SDK may require it)
+// In Node.js, crypto is built-in but may not be globally available in all environments
+if (typeof globalThis.crypto === 'undefined') {
+  try {
+    const crypto = require('crypto');
+    // Make crypto available globally for Azure SDK
+    if (typeof globalThis.crypto === 'undefined') {
+      globalThis.crypto = crypto;
+    }
+    if (typeof global.crypto === 'undefined') {
+      global.crypto = crypto;
+    }
+  } catch (e) {
+    console.warn('⚠️  crypto module not available, Azure operations may fail:', e.message);
+  }
+}
+
 // Initialize Azure Blob Service Client
 let blobServiceClient = null;
 let containerClient = null;
@@ -15,6 +32,12 @@ const initializeAzureStorage = () => {
       return false;
     }
 
+    // Validate connection string format
+    if (!connectionString.includes('AccountName') || !connectionString.includes('AccountKey')) {
+      console.error("❌ Invalid Azure Storage connection string format");
+      return false;
+    }
+
     blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     containerClient = blobServiceClient.getContainerClient(containerName);
     
@@ -22,6 +45,12 @@ const initializeAzureStorage = () => {
     return true;
   } catch (error) {
     console.error("❌ Failed to initialize Azure Blob Storage:", error.message);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Error details:", {
+      name: error.name,
+      code: error.code,
+      message: error.message
+    });
     return false;
   }
 };
@@ -35,6 +64,11 @@ const ensureContainerExists = async () => {
       }
     }
 
+    // Verify containerClient is properly initialized
+    if (!containerClient) {
+      throw new Error("Container client is not initialized");
+    }
+
     const exists = await containerClient.exists();
     if (!exists) {
       await containerClient.create({
@@ -45,6 +79,13 @@ const ensureContainerExists = async () => {
     return true;
   } catch (error) {
     console.error("❌ Error ensuring container exists:", error.message);
+    console.error("❌ Error stack:", error.stack);
+    console.error("❌ Container client state:", {
+      initialized: !!containerClient,
+      blobServiceClientInitialized: !!blobServiceClient,
+      connectionStringSet: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+      containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || "utleieskade-files"
+    });
     return false;
   }
 };
