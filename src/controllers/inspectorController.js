@@ -322,6 +322,47 @@ exports.requestPayout = async (req, res) => {
   }
 };
 
+exports.sendEarningsReport = async (req, res) => {
+  try {
+    const { month, year } = req.body;
+    const { id: inspectorId } = req.user;
+
+    // Validate month and year
+    if (!month || !year) {
+      responseHandler.setError(400, "Month and year are required");
+      return responseHandler.send(res);
+    }
+
+    if (month < 1 || month > 12) {
+      responseHandler.setError(400, "Month must be between 1 and 12");
+      return responseHandler.send(res);
+    }
+
+    if (year < 2020 || year > new Date().getFullYear() + 1) {
+      responseHandler.setError(400, "Invalid year");
+      return responseHandler.send(res);
+    }
+
+    const result = await inspectorService.sendEarningsReport({
+      inspectorId,
+      month: parseInt(month),
+      year: parseInt(year),
+    });
+
+    if (!result.success) {
+      responseHandler.setError(400, result.message);
+      return responseHandler.send(res);
+    }
+
+    responseHandler.setSuccess(200, result.message);
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error sending earnings report:", error);
+    responseHandler.setError(500, error.message || "Failed to send earnings report");
+    return responseHandler.send(res);
+  }
+};
+
 exports.getInspectorSettings = async (req, res) => {
   try {
     const inspectorId = req.user.id;

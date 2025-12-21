@@ -559,6 +559,51 @@ router.post(
 
 /**
  * @swagger
+ * /inspectors/earnings/report:
+ *   post:
+ *     summary: Request earnings report to be sent via email
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - month
+ *               - year
+ *             properties:
+ *               month:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 12
+ *                 example: 12
+ *                 description: Month number (1-12)
+ *               year:
+ *                 type: integer
+ *                 example: 2024
+ *                 description: Year
+ *     responses:
+ *       200:
+ *         description: Earnings report sent successfully
+ *       400:
+ *         description: Invalid request (missing or invalid month/year)
+ *       401:
+ *         description: Unauthorized - Inspector not authenticated
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/earnings/report",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.sendEarningsReport
+);
+
+/**
+ * @swagger
  * /inspectors/settings:
  *   get:
  *     summary: Get inspector settings

@@ -460,6 +460,171 @@ const getInspectorEarnings = async (inspectorId) => {
   }
 };
 
+const sendEarningsReport = async ({ inspectorId, month, year }) => {
+  try {
+    const { User, InspectorPayment, Case } = require("../models/index");
+    const sendEmail = require("../utils/sendEmail");
+    const emailTemplate = require("../utils/emailTemplate");
+    
+    // Get inspector details
+    const inspector = await User.findOne({
+      where: { userId: inspectorId, userType: "inspector" },
+      attributes: ["userEmail", "userFirstName", "userLastName"],
+    });
+
+    if (!inspector) {
+      throw new Error("Inspector not found");
+    }
+
+    // Calculate start and end dates for the month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    // Get earnings for the specified month
+    const payments = await InspectorPayment.findAll({
+      where: {
+        inspectorId,
+        paymentDate: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
+      include: [
+        {
+          model: Case,
+          as: "case",
+          attributes: ["caseId", "caseDescription", "caseStatus"],
+          required: false,
+        },
+      ],
+      order: [["paymentDate", "DESC"]],
+    });
+
+    // Calculate totals
+    const isPostgres = InspectorPayment.sequelize.getDialect() === "postgres";
+    let totalEarnings = 0;
+    let pendingEarnings = 0;
+    let processedEarnings = 0;
+
+    payments.forEach((payment) => {
+      const amount = parseFloat(payment.paymentAmount) || 0;
+      totalEarnings += amount;
+      if (payment.paymentStatus === "pending") {
+        pendingEarnings += amount;
+      } else if (payment.paymentStatus === "processed") {
+        processedEarnings += amount;
+      }
+    });
+
+    // Format month name
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const monthName = monthNames[month - 1];
+
+    // Build earnings report HTML
+    let earningsTable = "";
+    if (payments.length > 0) {
+      earningsTable = `
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead>
+            <tr style="background-color: #f5f5f5;">
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Date</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Case ID</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Description</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: right;">Amount (NOK)</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      payments.forEach((payment) => {
+        const paymentData = payment.toJSON ? payment.toJSON() : payment;
+        const date = new Date(paymentData.paymentDate).toLocaleDateString("nb-NO");
+        const amount = parseFloat(paymentData.paymentAmount) || 0;
+        const status = paymentData.paymentStatus.charAt(0).toUpperCase() + paymentData.paymentStatus.slice(1);
+        const statusColor = paymentData.paymentStatus === "processed" ? "#28a745" : 
+                           paymentData.paymentStatus === "pending" ? "#ffc107" : "#dc3545";
+
+        earningsTable += `
+          <tr>
+            <td style="border: 1px solid #ddd; padding: 8px;">${date}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${paymentData.caseId || "N/A"}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${paymentData.case?.caseDescription || "N/A"}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${amount.toFixed(2)}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center; color: ${statusColor}; font-weight: bold;">${status}</td>
+          </tr>
+        `;
+      });
+
+      earningsTable += `
+          </tbody>
+        </table>
+      `;
+    } else {
+      earningsTable = `<p style="margin: 20px 0;">No earnings recorded for ${monthName} ${year}.</p>`;
+    }
+
+    // Format currency
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat("nb-NO", {
+        style: "currency",
+        currency: "NOK",
+        minimumFractionDigits: 2,
+      }).format(amount);
+    };
+
+    // Build email body
+    const emailBody = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <p>Hello ${inspector.userFirstName} ${inspector.userLastName},</p>
+        
+        <p>Here is your earnings report for <strong>${monthName} ${year}</strong>:</p>
+        
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Summary</h3>
+          <ul style="list-style: none; padding: 0;">
+            <li style="margin: 10px 0;"><strong>Total Earnings:</strong> ${formatCurrency(totalEarnings)}</li>
+            <li style="margin: 10px 0;"><strong>Pending Earnings:</strong> ${formatCurrency(pendingEarnings)}</li>
+            <li style="margin: 10px 0;"><strong>Processed Earnings:</strong> ${formatCurrency(processedEarnings)}</li>
+          </ul>
+        </div>
+
+        <h3>Earnings Details</h3>
+        ${earningsTable}
+
+        <p style="margin-top: 30px;">
+          If you have any questions about your earnings, please contact our support team.
+        </p>
+
+        <p>Best regards,<br>Utleieskade Team</p>
+      </div>
+    `;
+
+    // Send email
+    const emailSubject = `Earnings Report - ${monthName} ${year}`;
+    const emailContent = emailTemplate("Earnings Report", emailBody);
+    
+    const emailSent = await sendEmail(inspector.userEmail, emailSubject, emailContent);
+    
+    if (!emailSent) {
+      console.warn(`⚠️ Earnings report email could not be sent to ${inspector.userEmail}, but report was generated`);
+      throw new Error("Failed to send earnings report email. Please check email configuration.");
+    }
+
+    console.log(`✅ Earnings report sent to ${inspector.userEmail} for ${monthName} ${year}`);
+    
+    return {
+      success: true,
+      message: "Earnings report sent successfully",
+    };
+  } catch (error) {
+    console.error("Error in sendEarningsReport:", error);
+    throw error;
+  }
+};
+
 const requestPayout = async ({ inspectorId, amount, userPassword, paymentId }) => {
   const inspector = await User.findOne({
     where: { userId: inspectorId, userType: "inspector" },
@@ -972,6 +1137,7 @@ module.exports = {
   getInspectorCases,
   getInspectorEarnings,
   requestPayout,
+  sendEarningsReport,
   getInspectorSettings,
   updateInspectorSettings,
   deleteInspector,
