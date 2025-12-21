@@ -424,13 +424,9 @@ const reportAssessment = async (reportData) => {
     }
 
     // Create assessment summary if provided
-    // First, ensure no existing summary exists for this report to avoid duplicate key errors
+    // Use upsert to handle existing records (update if exists, create if not)
     if (summary) {
       try {
-        // Delete any existing summary first to avoid primary key conflicts
-        await AssessmentSummary.destroy({ where: { reportId: newReport.reportId } });
-        
-        // Now create the new summary
         // Ensure all values are numbers, not NaN
         const safeSummary = {
           totalHours: Number(summary.totalHours) || 0,
@@ -442,7 +438,8 @@ const reportAssessment = async (reportData) => {
           total: Number(summary.total) || 0,
         };
 
-        await AssessmentSummary.create({
+        // Use upsert - this will update if record exists (by reportId) or create if it doesn't
+        const [assessmentSummary, created] = await AssessmentSummary.upsert({
           reportId: newReport.reportId,
           totalHours: safeSummary.totalHours,
           totalSumMaterials: safeSummary.totalSumMaterials,
@@ -451,18 +448,52 @@ const reportAssessment = async (reportData) => {
           vat: safeSummary.vat,
           sumInclVAT: safeSummary.sumInclVAT,
           total: safeSummary.total,
+        }, {
+          conflictFields: ['reportId'], // Use reportId to determine if record exists
+          returning: true,
         });
         
-        console.log(`✅ Assessment summary created for report ${newReport.reportId}`);
+        console.log(`✅ Assessment summary ${created ? 'created' : 'updated'} for report ${newReport.reportId}`);
       } catch (summaryError) {
-        console.error("Error creating assessment summary:", summaryError);
+        console.error("Error upserting assessment summary:", summaryError);
         console.error("Summary error details:", {
           message: summaryError.message,
           stack: summaryError.stack,
           reportId: newReport.reportId,
+          errorName: summaryError.name,
         });
-        // Don't throw - allow report to be created even if summary fails
-        console.warn("Continuing without assessment summary due to error");
+        
+        // If upsert fails, try the old destroy + create approach as fallback
+        try {
+          console.log("🔄 Attempting fallback: destroy + create");
+          await AssessmentSummary.destroy({ where: { reportId: newReport.reportId } });
+          
+          const safeSummary = {
+            totalHours: Number(summary.totalHours) || 0,
+            totalSumMaterials: Number(summary.totalSumMaterials) || 0,
+            totalSumLabor: Number(summary.totalSumLabor) || 0,
+            sumExclVAT: Number(summary.sumExclVAT) || 0,
+            vat: Number(summary.vat) || 0,
+            sumInclVAT: Number(summary.sumInclVAT) || 0,
+            total: Number(summary.total) || 0,
+          };
+          
+          await AssessmentSummary.create({
+            reportId: newReport.reportId,
+            totalHours: safeSummary.totalHours,
+            totalSumMaterials: safeSummary.totalSumMaterials,
+            totalSumLabor: safeSummary.totalSumLabor,
+            sumExclVAT: safeSummary.sumExclVAT,
+            vat: safeSummary.vat,
+            sumInclVAT: safeSummary.sumInclVAT,
+            total: safeSummary.total,
+          });
+          console.log(`✅ Assessment summary created (fallback) for report ${newReport.reportId}`);
+        } catch (fallbackError) {
+          console.error("Error in fallback summary creation:", fallbackError);
+          // Don't throw - allow report to be created even if summary fails
+          console.warn("Continuing without assessment summary due to error");
+        }
       }
     }
 
