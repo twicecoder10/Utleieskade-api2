@@ -5,9 +5,33 @@
  * 
  * Usage:
  *   node src/migrations/createActionLogTable.js
+ *   DATABASE_URL="postgresql://..." node src/migrations/createActionLogTable.js
  */
 
-const sequelize = require("../config/db");
+const { Sequelize } = require("sequelize");
+
+// Use provided DATABASE_URL or fall back to default config
+let sequelize;
+if (process.env.DATABASE_URL) {
+  // Use provided connection URL (useful for production/public URLs)
+  const url = new URL(process.env.DATABASE_URL);
+  const isPostgres = url.protocol === "postgresql:" || url.protocol === "postgres:";
+  
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: isPostgres ? "postgres" : "mysql",
+    dialectModule: isPostgres ? require("pg") : require("mysql2"),
+    logging: false,
+    dialectOptions: isPostgres ? {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    } : {},
+  });
+} else {
+  // Use default config from config/db.js
+  sequelize = require("../config/db");
+}
 
 async function createActionLogTable() {
   try {

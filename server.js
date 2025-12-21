@@ -44,6 +44,14 @@ const PORT = process.env.PORT || 3000;
         } catch (migrationError) {
           console.error("⚠️ UUID migration error (non-fatal):", migrationError.message);
         }
+        // Run ActionLog table creation migration (idempotent)
+        try {
+          const createActionLogTable = require("./src/migrations/createActionLogTable");
+          await createActionLogTable();
+          console.log("✅ ActionLog table migration check completed");
+        } catch (actionLogError) {
+          console.error("⚠️ ActionLog migration error (non-fatal):", actionLogError.message);
+        }
         // Run Case Status Enum fix
         try {
           const fixCaseStatusEnum = require("./src/utils/fixCaseStatusEnum");
