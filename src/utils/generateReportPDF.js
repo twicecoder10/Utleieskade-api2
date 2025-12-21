@@ -375,19 +375,29 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         }
         doc.text(`Hours: ${safeSummary.totalHours}`, { indent: 20 });
         
-        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text(`Sum material: ${formatCurrency(safeSummary.totalSumMaterials)}`, { indent: 20 });
         
-        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text(`Sum labor: ${formatCurrency(safeSummary.totalSumLabor)}`, { indent: 20 });
         
-        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text(`Sum excl. VAT: ${formatCurrency(safeSummary.sumExclVAT)}`, { indent: 20 });
         
-        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text(`VAT: ${formatCurrency(safeSummary.vat)}`, { indent: 20 });
         
-        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text(`Sum incl. VAT: ${formatCurrency(safeSummary.sumInclVAT)}`, { indent: 20 });
 
         // Validate before moveDown
@@ -413,12 +423,32 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         doc.moveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
+        // Validate doc.y before each text operation
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text(
           `Sum from calculation program: NOK ${formatCurrency(safeSummary.sumInclVAT)}`
         );
+        
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text("+ Loss of rental income: NOK " + formatCurrency(0));
+        
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text("- Standard improvement deduction: NOK " + formatCurrency(0));
+        
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.moveDown(0.5);
+        
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.font("Helvetica-Bold").fontSize(12);
         doc.text(
           `= Total value of the damage, incl. VAT: NOK ${formatCurrency(safeSummary.total)}`
