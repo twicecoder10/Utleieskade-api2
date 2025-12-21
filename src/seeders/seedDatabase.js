@@ -284,7 +284,7 @@ const seedDatabase = async () => {
       payments.push({
         paymentId,
         caseId,
-        paymentAmount: faker.finance.amount({ min: 100, max: 500 }),
+        paymentAmount: parseFloat(faker.finance.amount({ min: 100, max: 500 })),
         paymentDate: new Date(),
         paymentStatus: "pending",
         paymentDescription: "Inspection Fee",
@@ -397,7 +397,7 @@ const seedDatabase = async () => {
       {
         paymentId: generateUniqueId("PAYE"),
         paymentDate: new Date(),
-        paymentAmount: "500.00",
+        paymentAmount: 500.00,
         inspectorId: users.find((u) => u.userType === "inspector").userId,
       },
     ]);

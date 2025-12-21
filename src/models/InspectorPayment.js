@@ -11,7 +11,7 @@ const InspectorPayment = sequelize.define(
       defaultValue: () => generateUniqueId("PAYE"),
     },
     paymentDate: { type: DataTypes.DATE, allowNull: false },
-    paymentAmount: { type: DataTypes.STRING, allowNull: false },
+    paymentAmount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
     inspectorId: { type: DataTypes.STRING, allowNull: false },
     paymentStatus: {
       type: DataTypes.ENUM("pending", "processed", "rejected", "requested"),

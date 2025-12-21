@@ -8,7 +8,7 @@ const {
   Expertise,
   UserExpertise,
 } = require("../models/index");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 const bcrypt = require("bcryptjs");
 
 const createInspector = async (inspectorData, inspectorExpertiseCodes) => {
@@ -53,9 +53,27 @@ const getInspectorDasboard = async (inspectorId) => {
 
     let totalEarnings = 0;
     try {
-      const earningsSum = await InspectorPayment.sum("paymentAmount", {
-        where: { inspectorId },
-      });
+      const isPostgres = InspectorPayment.sequelize.getDialect() === "postgres";
+      let earningsSum;
+      
+      if (isPostgres) {
+        // For PostgreSQL, cast VARCHAR to numeric before summing
+        const result = await InspectorPayment.sequelize.query(
+          `SELECT COALESCE(SUM(CAST("paymentAmount" AS numeric)), 0) AS "sum" FROM "InspectorPayment" WHERE "inspectorId" = :inspectorId`,
+          {
+            replacements: { inspectorId },
+            type: Sequelize.QueryTypes.SELECT,
+            plain: true,
+          }
+        );
+        earningsSum = result?.sum || 0;
+      } else {
+        // For other databases, use regular sum
+        earningsSum = await InspectorPayment.sum("paymentAmount", {
+          where: { inspectorId },
+        });
+      }
+      
       totalEarnings = earningsSum ? parseFloat(earningsSum) : 0;
     } catch (earningsError) {
       console.error("Error calculating total earnings:", earningsError);
@@ -364,12 +382,29 @@ const getInspectorCases = async ({
 
 const getInspectorEarnings = async (inspectorId) => {
   try {
-  const totalBalance = await InspectorPayment.sum("paymentAmount", {
-    where: {
-      inspectorId,
-      paymentStatus: "pending",
-    },
-    }) || 0;
+    const isPostgres = InspectorPayment.sequelize.getDialect() === "postgres";
+    let totalBalance;
+    
+    if (isPostgres) {
+      // For PostgreSQL, cast VARCHAR to numeric before summing
+      const result = await InspectorPayment.sequelize.query(
+        `SELECT COALESCE(SUM(CAST("paymentAmount" AS numeric)), 0) AS "sum" FROM "InspectorPayment" WHERE "inspectorId" = :inspectorId AND "paymentStatus" = :status`,
+        {
+          replacements: { inspectorId, status: "pending" },
+          type: Sequelize.QueryTypes.SELECT,
+          plain: true,
+        }
+      );
+      totalBalance = result?.sum || 0;
+    } else {
+      // For other databases, use regular sum
+      totalBalance = await InspectorPayment.sum("paymentAmount", {
+        where: {
+          inspectorId,
+          paymentStatus: "pending",
+        },
+      }) || 0;
+    }
 
   const payoutHistory = await InspectorPayment.findAll({
     where: { inspectorId },
@@ -421,12 +456,29 @@ const requestPayout = async ({ inspectorId, amount, userPassword }) => {
     };
   }
 
-  const pendingBalance = await InspectorPayment.sum("paymentAmount", {
-    where: {
-      inspectorId,
-      paymentStatus: "pending",
-    },
-  });
+  const isPostgres = InspectorPayment.sequelize.getDialect() === "postgres";
+  let pendingBalance;
+  
+  if (isPostgres) {
+    // For PostgreSQL, cast VARCHAR to numeric before summing
+    const result = await InspectorPayment.sequelize.query(
+      `SELECT COALESCE(SUM(CAST("paymentAmount" AS numeric)), 0) AS "sum" FROM "InspectorPayment" WHERE "inspectorId" = :inspectorId AND "paymentStatus" = :status`,
+      {
+        replacements: { inspectorId, status: "pending" },
+        type: Sequelize.QueryTypes.SELECT,
+        plain: true,
+      }
+    );
+    pendingBalance = result?.sum || 0;
+  } else {
+    // For other databases, use regular sum
+    pendingBalance = await InspectorPayment.sum("paymentAmount", {
+      where: {
+        inspectorId,
+        paymentStatus: "pending",
+      },
+    });
+  }
 
   if (!pendingBalance) {
     return {
