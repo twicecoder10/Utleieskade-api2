@@ -349,16 +349,50 @@ exports.sendEarningsReport = async (req, res) => {
       year: parseInt(year),
     });
 
-    if (!result.success) {
-      responseHandler.setError(400, result.message);
+    if (!result.success || !result.pdfBuffer) {
+      responseHandler.setError(400, result.message || "Failed to generate earnings report");
       return responseHandler.send(res);
     }
 
-    responseHandler.setSuccess(200, result.message);
-    return responseHandler.send(res);
+    // Send PDF as download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+    res.send(result.pdfBuffer);
   } catch (error) {
-    console.error("Error sending earnings report:", error);
-    responseHandler.setError(500, error.message || "Failed to send earnings report");
+    console.error("Error generating earnings report:", error);
+    responseHandler.setError(500, error.message || "Failed to generate earnings report");
+    return responseHandler.send(res);
+  }
+};
+
+exports.downloadPayoutPDF = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { id: inspectorId } = req.user;
+
+    if (!paymentId) {
+      responseHandler.setError(400, "Payment ID is required");
+      return responseHandler.send(res);
+    }
+
+    const payoutDetails = await inspectorService.getPayoutDetails(paymentId, inspectorId);
+
+    if (!payoutDetails) {
+      responseHandler.setError(404, "Payout not found or access denied");
+      return responseHandler.send(res);
+    }
+
+    const { generatePayoutPDF } = require("../utils/generatePayoutPDF");
+    const pdfBuffer = await generatePayoutPDF(payoutDetails);
+
+    // Send PDF as download
+    const filename = `Payout-${payoutDetails.referenceNumber}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error generating payout PDF:", error);
+    responseHandler.setError(500, error.message || "Failed to generate payout PDF");
     return responseHandler.send(res);
   }
 };

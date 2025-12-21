@@ -604,6 +604,41 @@ router.post(
 
 /**
  * @swagger
+ * /inspectors/payout/{paymentId}/pdf:
+ *   get:
+ *     summary: Download payout receipt PDF
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Inspectors]
+ *     parameters:
+ *       - in: path
+ *         name: paymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Payment ID (reference number)
+ *     responses:
+ *       200:
+ *         description: Payout receipt PDF downloaded successfully
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Payout not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/payout/:paymentId/pdf",
+  authMiddleware,
+  authorizeRoles("inspector"),
+  inspectorController.downloadPayoutPDF
+);
+
+/**
+ * @swagger
  * /inspectors/settings:
  *   get:
  *     summary: Get inspector settings
