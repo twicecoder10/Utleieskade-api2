@@ -52,64 +52,75 @@ async function createActionLogTable() {
       console.log("✅ ActionLog table already exists");
       
       // Check if inspectorId column exists
-      const [columnExists] = await sequelize.query(`
+      const [inspectorIdExists] = await sequelize.query(`
         SELECT EXISTS (
           SELECT 1 FROM information_schema.columns 
           WHERE table_name = 'ActionLog' AND column_name = 'inspectorId'
         ) as exists;
       `);
 
-      if (columnExists[0].exists) {
-        console.log("✅ ActionLog table has all required columns");
-        return;
-      } else {
-        console.log("⚠️  ActionLog table exists but is missing inspectorId column. Adding column...");
-        
-        // Add inspectorId column if it doesn't exist
+      // Check if caseId column exists
+      const [caseIdExists] = await sequelize.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'ActionLog' AND column_name = 'caseId'
+        ) as exists;
+      `);
+
+      let columnsAdded = false;
+
+      // Add inspectorId column if it doesn't exist
+      if (!inspectorIdExists[0].exists) {
+        console.log("⚠️  Adding missing inspectorId column...");
         if (isPostgres) {
           await sequelize.query(`
             ALTER TABLE "ActionLog" 
-            ADD COLUMN IF NOT EXISTS "inspectorId" VARCHAR(255);
+            ADD COLUMN "inspectorId" VARCHAR(255);
           `);
-          
-          // Add caseId column if it doesn't exist (might be named targetCaseId in admin logs)
-          await sequelize.query(`
-            ALTER TABLE "ActionLog" 
-            ADD COLUMN IF NOT EXISTS "caseId" VARCHAR(255);
-          `);
-          
-          // Create indexes
           await sequelize.query(`
             CREATE INDEX IF NOT EXISTS "ActionLog_inspectorId_idx" ON "ActionLog" ("inspectorId");
           `);
-          
+        } else {
+          await sequelize.query(`
+            ALTER TABLE ActionLog 
+            ADD COLUMN inspectorId VARCHAR(255);
+          `);
+          await sequelize.query(`
+            CREATE INDEX IF NOT EXISTS ActionLog_inspectorId_idx ON ActionLog (inspectorId);
+          `);
+        }
+        columnsAdded = true;
+      }
+
+      // Add caseId column if it doesn't exist
+      if (!caseIdExists[0].exists) {
+        console.log("⚠️  Adding missing caseId column...");
+        if (isPostgres) {
+          await sequelize.query(`
+            ALTER TABLE "ActionLog" 
+            ADD COLUMN "caseId" VARCHAR(255);
+          `);
           await sequelize.query(`
             CREATE INDEX IF NOT EXISTS "ActionLog_caseId_idx" ON "ActionLog" ("caseId");
           `);
         } else {
-          // MySQL
           await sequelize.query(`
             ALTER TABLE ActionLog 
-            ADD COLUMN IF NOT EXISTS inspectorId VARCHAR(255);
+            ADD COLUMN caseId VARCHAR(255);
           `);
-          
-          await sequelize.query(`
-            ALTER TABLE ActionLog 
-            ADD COLUMN IF NOT EXISTS caseId VARCHAR(255);
-          `);
-          
-          await sequelize.query(`
-            CREATE INDEX IF NOT EXISTS ActionLog_inspectorId_idx ON ActionLog (inspectorId);
-          `);
-          
           await sequelize.query(`
             CREATE INDEX IF NOT EXISTS ActionLog_caseId_idx ON ActionLog (caseId);
           `);
         }
-        
-        console.log("✅ Successfully added inspectorId and caseId columns to ActionLog table");
-        return;
+        columnsAdded = true;
       }
+
+      if (columnsAdded) {
+        console.log("✅ Successfully added missing columns to ActionLog table");
+      } else {
+        console.log("✅ ActionLog table has all required columns");
+      }
+      return;
     }
 
     if (isPostgres) {
