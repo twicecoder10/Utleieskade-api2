@@ -63,7 +63,33 @@ async function createActionLogTable() {
         console.log("✅ ActionLog table has all required columns");
         return;
       } else {
-        console.log("⚠️  ActionLog table exists but is missing columns. Adding columns...");
+        console.log("⚠️  ActionLog table exists but is missing inspectorId column. Adding column...");
+        
+        // Add inspectorId column if it doesn't exist
+        if (isPostgres) {
+          await sequelize.query(`
+            ALTER TABLE "ActionLog" 
+            ADD COLUMN IF NOT EXISTS "inspectorId" VARCHAR(255);
+          `);
+          
+          // Create index on inspectorId
+          await sequelize.query(`
+            CREATE INDEX IF NOT EXISTS "ActionLog_inspectorId_idx" ON "ActionLog" ("inspectorId");
+          `);
+        } else {
+          // MySQL
+          await sequelize.query(`
+            ALTER TABLE ActionLog 
+            ADD COLUMN IF NOT EXISTS inspectorId VARCHAR(255);
+          `);
+          
+          await sequelize.query(`
+            CREATE INDEX IF NOT EXISTS ActionLog_inspectorId_idx ON ActionLog (inspectorId);
+          `);
+        }
+        
+        console.log("✅ Successfully added inspectorId column to ActionLog table");
+        return;
       }
     }
 
