@@ -67,13 +67,16 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         reject(error);
       });
 
-      // Helper function to format currency (NOK)
+      // Helper function to format currency (NOK) - handles NaN and null
       const formatCurrency = (amount) => {
+        // Convert to number and handle NaN, null, undefined
+        const numAmount = Number(amount);
+        const safeAmount = (isNaN(numAmount) || numAmount === null || numAmount === undefined) ? 0 : numAmount;
         return new Intl.NumberFormat("nb-NO", {
           style: "currency",
           currency: "NOK",
           minimumFractionDigits: 2,
-        }).format(amount || 0);
+        }).format(safeAmount);
       };
 
       // Helper function to format date
@@ -250,17 +253,29 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
             currentY = 50;
           }
 
+          // Ensure all item values are numbers, not NaN
+          const safeItem = {
+            item: item.item || "",
+            quantity: Number(item.quantity) || 0,
+            unitPrice: Number(item.unitPrice) || 0,
+            hours: Number(item.hours) || 0,
+            hourlyRate: Number(item.hourlyRate) || 0,
+            sumMaterial: Number(item.sumMaterial) || 0,
+            sumWork: Number(item.sumWork) || 0,
+            sumPost: Number(item.sumPost) || 0,
+          };
+
           const post = index + 1;
           doc.text(String(post), colPositions.post, currentY, { width: colWidths.post - 2 });
-          doc.text((item.item || "").substring(0, 25), colPositions.desc, currentY, { width: colWidths.desc - 2 }); // Truncate long descriptions
-          doc.text(String(item.quantity || 0), colPositions.qty, currentY, { width: colWidths.qty - 2, align: "right" });
+          doc.text(safeItem.item.substring(0, 25), colPositions.desc, currentY, { width: colWidths.desc - 2 }); // Truncate long descriptions
+          doc.text(String(safeItem.quantity), colPositions.qty, currentY, { width: colWidths.qty - 2, align: "right" });
           doc.text("pcs", colPositions.unit, currentY, { width: colWidths.unit - 2 });
-          doc.text(formatCurrency(item.unitPrice || 0), colPositions.unitPrice, currentY, { width: colWidths.unitPrice - 2, align: "right" });
-          doc.text(formatCurrency(item.sumMaterial || 0), colPositions.sumMat, currentY, { width: colWidths.sumMat - 2, align: "right" });
-          doc.text(String(item.hours || 0), colPositions.hours, currentY, { width: colWidths.hours - 2, align: "right" });
-          doc.text(formatCurrency(item.hourlyRate || 0), colPositions.hourlyRate, currentY, { width: colWidths.hourlyRate - 2, align: "right" });
-          doc.text(formatCurrency(item.sumWork || 0), colPositions.sumWork, currentY, { width: colWidths.sumWork - 2, align: "right" });
-          doc.text(formatCurrency(item.sumPost || 0), colPositions.sumPost, currentY, { width: colWidths.sumPost - 2, align: "right" });
+          doc.text(formatCurrency(safeItem.unitPrice), colPositions.unitPrice, currentY, { width: colWidths.unitPrice - 2, align: "right" });
+          doc.text(formatCurrency(safeItem.sumMaterial), colPositions.sumMat, currentY, { width: colWidths.sumMat - 2, align: "right" });
+          doc.text(String(safeItem.hours), colPositions.hours, currentY, { width: colWidths.hours - 2, align: "right" });
+          doc.text(formatCurrency(safeItem.hourlyRate), colPositions.hourlyRate, currentY, { width: colWidths.hourlyRate - 2, align: "right" });
+          doc.text(formatCurrency(safeItem.sumWork), colPositions.sumWork, currentY, { width: colWidths.sumWork - 2, align: "right" });
+          doc.text(formatCurrency(safeItem.sumPost), colPositions.sumPost, currentY, { width: colWidths.sumPost - 2, align: "right" });
 
           currentY += itemHeight;
         });
@@ -278,13 +293,24 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         doc.moveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
+        // Ensure all summary values are numbers, not NaN
+        const safeSummary = {
+          totalHours: Number(reportData.summary.totalHours) || 0,
+          totalSumMaterials: Number(reportData.summary.totalSumMaterials) || 0,
+          totalSumLabor: Number(reportData.summary.totalSumLabor) || 0,
+          sumExclVAT: Number(reportData.summary.sumExclVAT) || 0,
+          vat: Number(reportData.summary.vat) || 0,
+          sumInclVAT: Number(reportData.summary.sumInclVAT) || 0,
+          total: Number(reportData.summary.total) || 0,
+        };
+
         const summaryData = [
-          ["Hours", String(reportData.summary.totalHours || 0)],
-          ["Sum material", formatCurrency(reportData.summary.totalSumMaterials || 0)],
-          ["Sum labor", formatCurrency(reportData.summary.totalSumLabor || 0)],
-          ["Sum excl. VAT", formatCurrency(reportData.summary.sumExclVAT || 0)],
-          ["VAT", formatCurrency(reportData.summary.vat || 0)],
-          ["Sum incl. VAT", formatCurrency(reportData.summary.sumInclVAT || 0)],
+          ["Hours", String(safeSummary.totalHours)],
+          ["Sum material", formatCurrency(safeSummary.totalSumMaterials)],
+          ["Sum labor", formatCurrency(safeSummary.totalSumLabor)],
+          ["Sum excl. VAT", formatCurrency(safeSummary.sumExclVAT)],
+          ["VAT", formatCurrency(safeSummary.vat)],
+          ["Sum incl. VAT", formatCurrency(safeSummary.sumInclVAT)],
         ];
 
         startY = doc.y;
@@ -303,14 +329,14 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         doc.fontSize(10).font("Helvetica");
 
         doc.text(
-          `Sum from calculation program: NOK ${formatCurrency(reportData.summary.sumInclVAT || 0)}`
+          `Sum from calculation program: NOK ${formatCurrency(safeSummary.sumInclVAT)}`
         );
         doc.text("+ Loss of rental income: NOK " + formatCurrency(0));
         doc.text("- Standard improvement deduction: NOK " + formatCurrency(0));
         doc.moveDown(0.5);
         doc.font("Helvetica-Bold").fontSize(12);
         doc.text(
-          `= Total value of the damage, incl. VAT: NOK ${formatCurrency(reportData.summary.total || 0)}`
+          `= Total value of the damage, incl. VAT: NOK ${formatCurrency(safeSummary.total)}`
         );
       }
 

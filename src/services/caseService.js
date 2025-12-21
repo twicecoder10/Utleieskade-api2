@@ -424,55 +424,45 @@ const reportAssessment = async (reportData) => {
     }
 
     // Create assessment summary if provided
-    // Use findOrCreate to avoid duplicate key errors
+    // First, ensure no existing summary exists for this report to avoid duplicate key errors
     if (summary) {
       try {
-        const [assessmentSummary, created] = await AssessmentSummary.findOrCreate({
-          where: { reportId: newReport.reportId },
-          defaults: {
-            reportId: newReport.reportId,
-            totalHours: summary.totalHours || 0,
-            totalSumMaterials: summary.totalSumMaterials || 0,
-            totalSumLabor: summary.totalSumLabor || 0,
-            sumExclVAT: summary.sumExclVAT || 0,
-            vat: summary.vat || 0,
-            sumInclVAT: summary.sumInclVAT || 0,
-            total: summary.total || 0,
-          },
-        });
+        // Delete any existing summary first to avoid primary key conflicts
+        await AssessmentSummary.destroy({ where: { reportId: newReport.reportId } });
+        
+        // Now create the new summary
+        // Ensure all values are numbers, not NaN
+        const safeSummary = {
+          totalHours: Number(summary.totalHours) || 0,
+          totalSumMaterials: Number(summary.totalSumMaterials) || 0,
+          totalSumLabor: Number(summary.totalSumLabor) || 0,
+          sumExclVAT: Number(summary.sumExclVAT) || 0,
+          vat: Number(summary.vat) || 0,
+          sumInclVAT: Number(summary.sumInclVAT) || 0,
+          total: Number(summary.total) || 0,
+        };
 
-        // If it already exists, update it instead
-        if (!created) {
-          await assessmentSummary.update({
-            totalHours: summary.totalHours || 0,
-            totalSumMaterials: summary.totalSumMaterials || 0,
-            totalSumLabor: summary.totalSumLabor || 0,
-            sumExclVAT: summary.sumExclVAT || 0,
-            vat: summary.vat || 0,
-            sumInclVAT: summary.sumInclVAT || 0,
-            total: summary.total || 0,
-          });
-        }
+        await AssessmentSummary.create({
+          reportId: newReport.reportId,
+          totalHours: safeSummary.totalHours,
+          totalSumMaterials: safeSummary.totalSumMaterials,
+          totalSumLabor: safeSummary.totalSumLabor,
+          sumExclVAT: safeSummary.sumExclVAT,
+          vat: safeSummary.vat,
+          sumInclVAT: safeSummary.sumInclVAT,
+          total: safeSummary.total,
+        });
+        
+        console.log(`✅ Assessment summary created for report ${newReport.reportId}`);
       } catch (summaryError) {
-        console.error("Error creating/updating assessment summary:", summaryError);
-        // If findOrCreate fails, try to delete existing and create new
-        try {
-          await AssessmentSummary.destroy({ where: { reportId: newReport.reportId } });
-          await AssessmentSummary.create({
-            reportId: newReport.reportId,
-            totalHours: summary.totalHours || 0,
-            totalSumMaterials: summary.totalSumMaterials || 0,
-            totalSumLabor: summary.totalSumLabor || 0,
-            sumExclVAT: summary.sumExclVAT || 0,
-            vat: summary.vat || 0,
-            sumInclVAT: summary.sumInclVAT || 0,
-            total: summary.total || 0,
-          });
-        } catch (fallbackError) {
-          console.error("Error in fallback summary creation:", fallbackError);
-          // Don't throw - allow report to be created even if summary fails
-          console.warn("Continuing without assessment summary due to error");
-        }
+        console.error("Error creating assessment summary:", summaryError);
+        console.error("Summary error details:", {
+          message: summaryError.message,
+          stack: summaryError.stack,
+          reportId: newReport.reportId,
+        });
+        // Don't throw - allow report to be created even if summary fails
+        console.warn("Continuing without assessment summary due to error");
       }
     }
 
