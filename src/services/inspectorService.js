@@ -758,7 +758,7 @@ const deleteInspector = async (inspectorId) => {
 };
 
 const getInspectorReports = async ({ inspectorId, page, limit, search }) => {
-  const { Report, Case, AssessmentSummary } = require("../models/index");
+  const { Report, Case, AssessmentSummary, Property } = require("../models/index");
   const offset = (page - 1) * limit;
   const whereClause = { inspectorId };
 
@@ -775,6 +775,14 @@ const getInspectorReports = async ({ inspectorId, page, limit, search }) => {
           ["caseId", "caseID"],
           ["caseDescription", "caseDescription"],
         ],
+        include: [
+          {
+            model: Property,
+            as: "property",
+            attributes: ["propertyAddress"],
+            required: false,
+          },
+        ],
       },
       {
         model: AssessmentSummary,
@@ -789,6 +797,7 @@ const getInspectorReports = async ({ inspectorId, page, limit, search }) => {
       ["reportId", "reportId"],
       ["caseId", "caseId"],
       ["reportDescription", "description"],
+      ["pdfUrl", "pdfUrl"],
       ["createdAt", "date"],
     ],
     limit: parseInt(limit),
