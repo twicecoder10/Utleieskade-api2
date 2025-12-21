@@ -340,7 +340,6 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         // Draw Results title with underline - doc.y should be valid now
         doc.fontSize(12).font("Helvetica-Bold").text("Results:", { underline: true });
         doc.moveDown(0.5);
-        doc.moveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
         // Use relative positioning to avoid NaN coordinate issues
