@@ -206,15 +206,22 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         const tableLeft = 50;
         const tableRight = 545;
         const tableWidth = tableRight - tableLeft;
-        // Ensure doc.y is valid before using it
-        const tableTop = (isNaN(doc.y) || doc.y === undefined || doc.y === null) ? 50 : doc.y;
+        
+        // Ensure doc.y is valid before using it for table positioning
+        const currentDocY = doc.y;
+        if (isNaN(currentDocY) || currentDocY === undefined || currentDocY === null || currentDocY < 0) {
+          console.warn("⚠️ doc.y is invalid before table, resetting");
+          doc.y = 50;
+        }
+        const tableTop = doc.y;
         const itemHeight = 25;
         let currentY = tableTop;
         
         // Validate currentY is a number
-        if (isNaN(currentY)) {
+        if (isNaN(currentY) || currentY < 0) {
           console.error("❌ Invalid currentY, resetting to 50");
           currentY = 50;
+          doc.y = 50;
         }
 
         // Column widths (sums to ~495 points)
