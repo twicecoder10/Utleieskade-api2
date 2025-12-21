@@ -122,8 +122,14 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
       ];
 
       // Create a simple table layout for assignment info
-      let startY = doc.y;
+      // Ensure doc.y is valid before using it
+      let startY = (isNaN(doc.y) || doc.y === undefined || doc.y === null) ? 50 : doc.y;
       assignmentData.forEach(([label, value]) => {
+        // Validate startY is a number
+        if (isNaN(startY)) {
+          console.error("❌ Invalid startY in assignmentData loop, skipping");
+          return;
+        }
         doc.text(`${label}:`, 50, startY, { width: 200, continued: true });
         doc.text(value || "N/A", 250, startY, { width: 250 });
         startY += 20;
@@ -144,8 +150,14 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         ["Damage Location", firstDamage?.damageLocation || caseData?.property?.propertyAddress || "N/A"],
       ];
 
-      startY = doc.y;
+      // Ensure doc.y is valid before using it
+      startY = (isNaN(doc.y) || doc.y === undefined || doc.y === null) ? 50 : doc.y;
       damageData.forEach(([label, value]) => {
+        // Validate startY is a number
+        if (isNaN(startY)) {
+          console.error("❌ Invalid startY in damageData loop, skipping");
+          return;
+        }
         doc.text(`${label}:`, 50, startY, { width: 200, continued: true });
         doc.text(value || "N/A", 250, startY, { width: 250 });
         startY += 20;
@@ -194,9 +206,16 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         const tableLeft = 50;
         const tableRight = 545;
         const tableWidth = tableRight - tableLeft;
-        const tableTop = doc.y;
+        // Ensure doc.y is valid before using it
+        const tableTop = (isNaN(doc.y) || doc.y === undefined || doc.y === null) ? 50 : doc.y;
         const itemHeight = 25;
         let currentY = tableTop;
+        
+        // Validate currentY is a number
+        if (isNaN(currentY)) {
+          console.error("❌ Invalid currentY, resetting to 50");
+          currentY = 50;
+        }
 
         // Column widths (sums to ~495 points)
         const colWidths = {
@@ -282,9 +301,17 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
 
         // Draw bottom line
         doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).stroke();
-        doc.y = currentY + 15;
+        // Ensure doc.y is properly set after table
+        const finalY = currentY + 15;
+        doc.y = isNaN(finalY) ? doc.y + 50 : finalY;
       } else {
         doc.text("No items added", { align: "left" });
+      }
+
+      // Ensure doc.y is a valid number before continuing
+      if (isNaN(doc.y) || doc.y === undefined || doc.y === null) {
+        console.warn("⚠️ doc.y is invalid, resetting to safe position");
+        doc.y = 50; // Reset to top of page
       }
 
       // Results Summary
