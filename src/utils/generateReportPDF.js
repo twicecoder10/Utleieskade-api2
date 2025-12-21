@@ -301,25 +301,15 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
 
         // Draw bottom line
         doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).stroke();
-        // Ensure doc.y is properly set after table
-        const finalY = currentY + 15;
-        doc.y = isNaN(finalY) ? doc.y + 50 : finalY;
+        // Use relative positioning after table - let PDFKit manage doc.y
+        doc.moveDown(2);
       } else {
         doc.text("No items added", { align: "left" });
-      }
-
-      // Ensure doc.y is a valid number before continuing
-      if (isNaN(doc.y) || doc.y === undefined || doc.y === null) {
-        console.warn("⚠️ doc.y is invalid, resetting to safe position");
-        doc.y = 50; // Reset to top of page
+        doc.moveDown(1);
       }
 
       // Results Summary
       if (reportData.summary) {
-        doc.fontSize(12).font("Helvetica-Bold").text("Results:", { underline: true });
-        doc.moveDown(0.5);
-        doc.fontSize(10).font("Helvetica");
-
         // Ensure all summary values are numbers, not NaN
         const safeSummary = {
           totalHours: Number(reportData.summary.totalHours) || 0,
@@ -331,22 +321,17 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
           total: Number(reportData.summary.total) || 0,
         };
 
-        const summaryData = [
-          ["Hours", String(safeSummary.totalHours)],
-          ["Sum material", formatCurrency(safeSummary.totalSumMaterials)],
-          ["Sum labor", formatCurrency(safeSummary.totalSumLabor)],
-          ["Sum excl. VAT", formatCurrency(safeSummary.sumExclVAT)],
-          ["VAT", formatCurrency(safeSummary.vat)],
-          ["Sum incl. VAT", formatCurrency(safeSummary.sumInclVAT)],
-        ];
+        doc.fontSize(12).font("Helvetica-Bold").text("Results:", { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10).font("Helvetica");
 
-        startY = doc.y;
-        summaryData.forEach(([label, value]) => {
-          doc.text(`${label}:`, 50, startY, { width: 150, continued: true });
-          doc.font("Helvetica-Bold").text(value, 200, startY, { width: 150 });
-          doc.font("Helvetica");
-          startY += 20;
-        });
+        // Use relative positioning to avoid NaN coordinate issues
+        doc.text(`Hours: ${safeSummary.totalHours}`, { indent: 20 });
+        doc.text(`Sum material: ${formatCurrency(safeSummary.totalSumMaterials)}`, { indent: 20 });
+        doc.text(`Sum labor: ${formatCurrency(safeSummary.totalSumLabor)}`, { indent: 20 });
+        doc.text(`Sum excl. VAT: ${formatCurrency(safeSummary.sumExclVAT)}`, { indent: 20 });
+        doc.text(`VAT: ${formatCurrency(safeSummary.vat)}`, { indent: 20 });
+        doc.text(`Sum incl. VAT: ${formatCurrency(safeSummary.sumInclVAT)}`, { indent: 20 });
 
         doc.moveDown(1.5);
 
