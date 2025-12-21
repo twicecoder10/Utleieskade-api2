@@ -28,9 +28,20 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
       doc.on("end", async () => {
         try {
           console.log(`🔄 PDF document ended, combining ${chunks.length} chunks...`);
+          
+          // Validate that we have chunks to combine
+          if (!chunks || chunks.length === 0) {
+            throw new Error("PDF generation produced no data chunks");
+          }
+          
           // Combine all chunks into a buffer
           const pdfBuffer = Buffer.concat(chunks);
           console.log(`✅ PDF buffer created, size: ${pdfBuffer.length} bytes`);
+
+          // Validate buffer size
+          if (!pdfBuffer || pdfBuffer.length === 0) {
+            throw new Error("PDF buffer is empty after combining chunks");
+          }
 
           // Generate filename
           const reportNumber = `RPT-${caseData.caseId || "N/A"}-${new Date().toISOString().split("T")[0].replace(/-/g, "")}`;
@@ -45,8 +56,8 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
             "Reports"
           );
 
-          if (!pdfUrl) {
-            throw new Error("uploadToAzure returned null or undefined URL");
+          if (!pdfUrl || typeof pdfUrl !== 'string') {
+            throw new Error(`uploadToAzure returned invalid URL: ${pdfUrl}`);
           }
 
           console.log(`✅ PDF generated and uploaded to Azure: ${pdfUrl}`);
@@ -57,6 +68,7 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
             message: uploadError.message,
             stack: uploadError.stack,
             reportId: reportId,
+            chunksCount: chunks?.length || 0,
           });
           reject(uploadError);
         }
@@ -90,6 +102,21 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         });
       };
 
+      // Helper function to safely move down and ensure doc.y is valid
+      const safeMoveDown = (lines = 1) => {
+        // Validate and fix doc.y if it's invalid
+        if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+          console.warn(`⚠️ doc.y is invalid before safeMoveDown(${lines}), resetting to 50`);
+          doc.y = 50;
+        }
+        doc.moveDown(lines);
+        // Validate doc.y after moveDown to catch any issues
+        if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+          console.warn(`⚠️ doc.y became invalid after safeMoveDown(${lines}), resetting to 50`);
+          doc.y = 50;
+        }
+      };
+
       // Generate report number and date
       const reportNumber = `RPT-${caseData.caseId || "N/A"}-${new Date().toISOString().split("T")[0].replace(/-/g, "")}`;
       const reportDate = formatDate(new Date());
@@ -98,11 +125,11 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
 
       // Title
       doc.fontSize(20).font("Helvetica-Bold").text("DAMAGE REPORT", { align: "center" });
-      doc.moveDown(2);
+      safeMoveDown(2);
 
       // Assignment Information
       doc.fontSize(14).font("Helvetica-Bold").text("Assignment Information", { underline: true });
-      doc.moveDown(0.5);
+      safeMoveDown(0.5);
       doc.fontSize(10).font("Helvetica");
 
       const assignmentData = [
@@ -135,11 +162,11 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         startY += 20;
       });
 
-      doc.moveDown(2);
+      safeMoveDown(2);
 
       // Damage Information
       doc.fontSize(14).font("Helvetica-Bold").text("Damage Information", { underline: true });
-      doc.moveDown(0.5);
+      safeMoveDown(0.5);
       doc.fontSize(10).font("Helvetica");
 
       const damageData = [
@@ -163,43 +190,43 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         startY += 20;
       });
 
-      doc.moveDown(2);
+      safeMoveDown(2);
 
       // Damage Description
       doc.fontSize(14).font("Helvetica-Bold").text("Damage Description", { underline: true });
-      doc.moveDown(0.5);
+      safeMoveDown(0.5);
       doc.fontSize(10).font("Helvetica");
       doc.text(
         "Based on submitted information and photos, the following description of the damage forms the basis for further assessments:",
         { align: "left" }
       );
-      doc.moveDown(0.5);
+      safeMoveDown(0.5);
       doc.text(reportData.reportDescription || "No description provided", {
         align: "left",
         indent: 20,
       });
 
-      doc.moveDown(2);
+      safeMoveDown(2);
 
       // Damage Repair
       doc.fontSize(14).font("Helvetica-Bold").text("Damage Repair", { underline: true });
-      doc.moveDown(0.5);
+      safeMoveDown(0.5);
       doc.fontSize(10).font("Helvetica");
       doc.text(
         "To repair the damage, the valuation engineer finds it necessary to carry out the following repair work:",
         { align: "left" }
       );
-      doc.moveDown(0.5);
+      safeMoveDown(0.5);
       doc.text(reportData.reportDescription || "Repair work details to be specified", {
         align: "left",
         indent: 20,
       });
 
-      doc.moveDown(2);
+      safeMoveDown(2);
 
       // Repair Estimate
       doc.fontSize(14).font("Helvetica-Bold").text("Repair Estimate", { underline: true });
-      doc.moveDown(0.5);
+      safeMoveDown(0.5);
 
       if (reportData.items && reportData.items.length > 0) {
         // Table dimensions - A4 page width: 595 points, with 50pt margins each side = 495pt available
@@ -320,7 +347,7 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         }
       } else {
         doc.text("No items added", { align: "left" });
-        doc.moveDown(1);
+        safeMoveDown(1);
       }
 
       // Ensure doc.y is valid before continuing to Results section
@@ -364,7 +391,7 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         if (isNaN(doc.y) || doc.y < 0) {
           doc.y = resultsTitleY + 15 || 50;
         }
-        doc.moveDown(0.5);
+        safeMoveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
         // Use relative positioning to avoid NaN coordinate issues
@@ -404,7 +431,7 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         if (isNaN(doc.y) || doc.y < 0) {
           doc.y = 50;
         }
-        doc.moveDown(1.5);
+        safeMoveDown(1.5);
 
         // Conclusion - avoid underline to prevent NaN coordinate issues after table
         // Validate doc.y before drawing
@@ -420,7 +447,7 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
           const startX = 50;
           doc.moveTo(startX, doc.y - 2).lineTo(startX + textWidth, doc.y - 2).stroke();
         }
-        doc.moveDown(0.5);
+        safeMoveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
         // Validate doc.y before each text operation
@@ -444,7 +471,7 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         if (isNaN(doc.y) || doc.y < 0) {
           doc.y = 50;
         }
-        doc.moveDown(0.5);
+        safeMoveDown(0.5);
         
         if (isNaN(doc.y) || doc.y < 0) {
           doc.y = 50;
@@ -455,20 +482,75 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         );
       }
 
-      doc.moveDown(2);
+      // Validate doc.y before Signature section
+      if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+        console.warn("⚠️ doc.y is invalid before Signature section, resetting");
+        doc.y = 50;
+      }
+      
+      safeMoveDown(2);
 
-      // Signature section
-      doc.fontSize(14).font("Helvetica-Bold").text("Signature", { underline: true });
-      doc.moveDown(1);
+      // Signature section - manually draw underline to avoid NaN coordinate issues
+      // Validate doc.y before drawing
+      if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+        console.warn("⚠️ doc.y is invalid before Signature title, resetting");
+        doc.y = 50;
+      }
+      const signatureTitleY = doc.y;
+      doc.fontSize(14).font("Helvetica-Bold").text("Signature");
+      // Manually draw underline if coordinates are valid
+      if (!isNaN(signatureTitleY) && signatureTitleY >= 0 && !isNaN(doc.y) && doc.y >= 0) {
+        try {
+          const textWidth = doc.widthOfString("Signature");
+          const startX = 50; // Left margin
+          doc.moveTo(startX, doc.y - 2).lineTo(startX + textWidth, doc.y - 2).stroke();
+        } catch (underlineError) {
+          console.warn("⚠️ Could not draw underline for Signature title:", underlineError.message);
+        }
+      }
+      safeMoveDown(1);
+      
+      // Validate doc.y before text operations
+      if (isNaN(doc.y) || doc.y < 0) {
+        doc.y = (signatureTitleY || 50) + 15;
+      }
       doc.fontSize(10).font("Helvetica");
       doc.text("Inspector Signature", 50, doc.y);
-      doc.moveDown(2);
-      doc.moveTo(50, doc.y).lineTo(250, doc.y).stroke();
-      doc.moveDown(2);
+      safeMoveDown(2);
+      
+      // Validate doc.y before drawing signature line
+      if (isNaN(doc.y) || doc.y < 0) {
+        doc.y = 50;
+      }
+      const signatureLineY = doc.y;
+      if (!isNaN(signatureLineY) && signatureLineY >= 0) {
+        doc.moveTo(50, signatureLineY).lineTo(250, signatureLineY).stroke();
+      }
+      safeMoveDown(2);
 
-      // Assumptions
-      doc.fontSize(14).font("Helvetica-Bold").text("Assumptions", { underline: true });
-      doc.moveDown(0.5);
+      // Assumptions - manually draw underline to avoid NaN coordinate issues
+      // Validate doc.y before drawing
+      if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+        console.warn("⚠️ doc.y is invalid before Assumptions title, resetting");
+        doc.y = 50;
+      }
+      const assumptionsTitleY = doc.y;
+      doc.fontSize(14).font("Helvetica-Bold").text("Assumptions");
+      // Manually draw underline if coordinates are valid
+      if (!isNaN(assumptionsTitleY) && assumptionsTitleY >= 0 && !isNaN(doc.y) && doc.y >= 0) {
+        try {
+          const textWidth = doc.widthOfString("Assumptions");
+          const startX = 50; // Left margin
+          doc.moveTo(startX, doc.y - 2).lineTo(startX + textWidth, doc.y - 2).stroke();
+        } catch (underlineError) {
+          console.warn("⚠️ Could not draw underline for Assumptions title:", underlineError.message);
+        }
+      }
+      // Validate doc.y before moveDown
+      if (isNaN(doc.y) || doc.y < 0) {
+        doc.y = (assumptionsTitleY || 50) + 15;
+      }
+      safeMoveDown(0.5);
       doc.fontSize(9).font("Helvetica");
 
       const assumptions = [
@@ -479,20 +561,39 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
       ];
 
       assumptions.forEach((text) => {
+        // Validate doc.y before each text operation
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.text(text, { align: "left", indent: 20 });
-        doc.moveDown(0.5);
+        safeMoveDown(0.5);
       });
 
       // Footer with generation date
-      const pageHeight = doc.page.height;
-      const pageWidth = doc.page.width;
-      doc.fontSize(8).font("Helvetica");
-      doc.text(
-        `Generated: ${new Date().toLocaleString("nb-NO")}`,
-        pageWidth - 200,
-        pageHeight - 30,
-        { align: "right" }
-      );
+      // Validate page dimensions before using them
+      const pageHeight = doc.page?.height;
+      const pageWidth = doc.page?.width;
+      
+      if (!isNaN(pageHeight) && !isNaN(pageWidth) && pageHeight > 0 && pageWidth > 0) {
+        const footerX = Math.max(50, pageWidth - 200); // Ensure minimum margin
+        const footerY = Math.max(50, pageHeight - 30); // Ensure minimum margin
+        
+        if (!isNaN(footerX) && !isNaN(footerY) && footerX >= 0 && footerY >= 0) {
+          try {
+            doc.fontSize(8).font("Helvetica");
+            doc.text(
+              `Generated: ${new Date().toLocaleString("nb-NO")}`,
+              footerX,
+              footerY,
+              { align: "right" }
+            );
+          } catch (footerError) {
+            console.warn("⚠️ Could not add footer to PDF:", footerError.message);
+          }
+        }
+      } else {
+        console.warn("⚠️ Invalid page dimensions, skipping footer");
+      }
 
       // Finalize PDF
       console.log(`🔄 Finalizing PDF document...`);

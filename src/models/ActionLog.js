@@ -11,7 +11,7 @@ const ActionLog = sequelize.define(
     },
     inspectorId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Nullable to support admin-only actions
     },
     actionType: {
       type: DataTypes.STRING,
@@ -22,6 +22,10 @@ const ActionLog = sequelize.define(
       allowNull: false,
     },
     caseId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    adminId: {
       type: DataTypes.STRING,
       allowNull: true,
     },

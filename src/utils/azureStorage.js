@@ -52,6 +52,19 @@ const ensureContainerExists = async () => {
 // Upload file to Azure Blob Storage with folder organization
 const uploadToAzure = async (fileBuffer, fileName, contentType, folder = null) => {
   try {
+    // Validate input buffer
+    if (!fileBuffer) {
+      throw new Error("File buffer is required but was null or undefined");
+    }
+    
+    if (!Buffer.isBuffer(fileBuffer)) {
+      throw new Error("fileBuffer must be a Buffer instance");
+    }
+    
+    if (fileBuffer.length === 0) {
+      throw new Error("File buffer is empty - cannot upload empty file");
+    }
+
     if (!containerClient) {
       if (!initializeAzureStorage()) {
         throw new Error("Azure storage not initialized - connection string may be missing or invalid");
@@ -100,7 +113,12 @@ const uploadToAzure = async (fileBuffer, fileName, contentType, folder = null) =
     // Get the blob URL
     const blobUrl = blockBlobClient.url;
 
-    console.log(`✅ File uploaded to Azure: ${blobUrl} (folder: ${targetFolder || 'root'})`);
+    // Validate that we got a valid URL
+    if (!blobUrl || typeof blobUrl !== 'string' || !blobUrl.startsWith('http')) {
+      throw new Error(`Invalid blob URL returned from Azure: ${blobUrl}`);
+    }
+
+    console.log(`✅ File uploaded to Azure: ${blobUrl} (folder: ${targetFolder || 'root'}, size: ${fileBuffer.length} bytes)`);
     return blobUrl;
   } catch (error) {
     console.error("❌ Error uploading to Azure:", {

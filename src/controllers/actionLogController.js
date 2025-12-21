@@ -9,23 +9,44 @@ exports.getActionLogs = async (req, res) => {
       startDate,
       endDate,
       caseId,
+      inspectorId: queryInspectorId,
+      adminId: queryAdminId,
+      userId, // For backward compatibility, can be inspectorId or adminId
       page = 1,
       limit = 20,
       search,
     } = req.query;
 
-    // Get inspector ID from authenticated user
-    const inspectorId = req.user?.id;
-    
-    if (!inspectorId) {
-      responseHandler.setError(401, "Unauthorized - Inspector ID not found");
-      return responseHandler.send(res);
-    }
+    const userType = req.user?.userType;
+    const userIdFromAuth = req.user?.id;
 
     // Build where clause
-    const whereClause = {
-      inspectorId,
-    };
+    const whereClause = {};
+
+    // Filter by user type: admins can see all logs, inspectors/admins can see their own
+    if (userType === "admin" || userType === "sub-admin") {
+      // Admins can filter by inspectorId or adminId from query params
+      if (queryInspectorId) {
+        whereClause.inspectorId = queryInspectorId;
+      }
+      if (queryAdminId) {
+        whereClause.adminId = queryAdminId;
+      }
+      // If userId is provided, check if it matches an inspector or admin
+      if (userId && !queryInspectorId && !queryAdminId) {
+        whereClause[Op.or] = [
+          { inspectorId: userId },
+          { adminId: userId },
+        ];
+      }
+      // If no filters, show all logs for admins
+    } else if (userType === "inspector") {
+      // Inspectors can only see their own logs
+      whereClause.inspectorId = userIdFromAuth;
+    } else {
+      responseHandler.setError(403, "Forbidden - Insufficient permissions");
+      return responseHandler.send(res);
+    }
 
     if (actionType) {
       whereClause.actionType = actionType;
@@ -46,10 +67,22 @@ exports.getActionLogs = async (req, res) => {
     }
 
     if (search) {
-      whereClause[Op.or] = [
+      // If we already have an Op.or (from userId filter), merge it
+      const searchOr = [
         { actionDescription: { [Op.iLike]: `%${search}%` } },
         { actionType: { [Op.iLike]: `%${search}%` } },
       ];
+      
+      if (whereClause[Op.or]) {
+        // Merge with existing Op.or
+        whereClause[Op.and] = [
+          { [Op.or]: whereClause[Op.or] },
+          { [Op.or]: searchOr },
+        ];
+        delete whereClause[Op.or];
+      } else {
+        whereClause[Op.or] = searchOr;
+      }
     }
 
     // Calculate offset for pagination
@@ -79,8 +112,9 @@ exports.getActionLogs = async (req, res) => {
 
 exports.getActionTypes = async (req, res) => {
   try {
-    // Return inspector-specific action types
+    // Return all action types (both inspector and admin)
     const actionTypes = [
+      // Inspector actions
       "case_claimed",
       "case_cancelled",
       "case_on_hold",
@@ -89,6 +123,14 @@ exports.getActionTypes = async (req, res) => {
       "report_submitted",
       "timer_started",
       "timer_stopped",
+      // Admin actions
+      "admin_case_assigned",
+      "admin_case_updated",
+      "admin_user_created",
+      "admin_user_updated",
+      "admin_user_deleted",
+      "admin_payment_processed",
+      "admin_refund_processed",
     ];
 
     responseHandler.setSuccess(200, "Action types retrieved successfully", actionTypes);

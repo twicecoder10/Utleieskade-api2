@@ -11,7 +11,8 @@
     "seed-db": "node src/seeders/seedDatabase.js",
     "migrate-property": "node src/seeders/migratePropertyId.js",
     "fix-property-uuid": "node src/seeders/fixPropertyUuid.js",
-    "migrate-actionlog": "node src/migrations/createActionLogTable.js"
+    "migrate-actionlog": "node src/migrations/createActionLogTable.js",
+    "migrate-actionlog-admin": "node src/migrations/fixActionLogAdminIdNullConstraint.js"
   },
   "repository": {
     "type": "git",

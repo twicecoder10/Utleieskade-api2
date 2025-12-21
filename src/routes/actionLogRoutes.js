@@ -39,7 +39,12 @@ const router = express.Router();
  *         name: userId
  *         schema:
  *           type: string
- *         description: Filter by user ID
+ *         description: Filter by user ID (inspector or admin)
+ *       - in: query
+ *         name: inspectorId
+ *         schema:
+ *           type: string
+ *         description: Filter by inspector ID
  *       - in: query
  *         name: caseId
  *         schema:
