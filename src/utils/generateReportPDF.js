@@ -343,30 +343,73 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
         };
 
         // Draw Results title - avoid underline to prevent NaN coordinate issues
-        // Store current Y position before text
+        // Validate doc.y before drawing
+        if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+          console.warn("⚠️ doc.y is invalid before Results title, resetting");
+          doc.y = 50;
+        }
         const resultsTitleY = doc.y;
         doc.fontSize(12).font("Helvetica-Bold").text("Results:");
         // Manually draw underline if doc.y is valid
         if (!isNaN(resultsTitleY) && resultsTitleY >= 0 && !isNaN(doc.y) && doc.y >= 0) {
-          const textWidth = doc.widthOfString("Results:");
-          const startX = 50; // Left margin
-          doc.moveTo(startX, doc.y - 2).lineTo(startX + textWidth, doc.y - 2).stroke();
+          try {
+            const textWidth = doc.widthOfString("Results:");
+            const startX = 50; // Left margin
+            doc.moveTo(startX, doc.y - 2).lineTo(startX + textWidth, doc.y - 2).stroke();
+          } catch (underlineError) {
+            console.warn("⚠️ Could not draw underline for Results title:", underlineError.message);
+          }
+        }
+        // Validate before moveDown
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = resultsTitleY + 15 || 50;
         }
         doc.moveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
         // Use relative positioning to avoid NaN coordinate issues
+        // Validate doc.y before each text operation after table
+        if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+          console.warn("⚠️ doc.y is invalid before summary items, resetting");
+          doc.y = 50;
+        }
         doc.text(`Hours: ${safeSummary.totalHours}`, { indent: 20 });
+        
+        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
         doc.text(`Sum material: ${formatCurrency(safeSummary.totalSumMaterials)}`, { indent: 20 });
+        
+        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
         doc.text(`Sum labor: ${formatCurrency(safeSummary.totalSumLabor)}`, { indent: 20 });
+        
+        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
         doc.text(`Sum excl. VAT: ${formatCurrency(safeSummary.sumExclVAT)}`, { indent: 20 });
+        
+        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
         doc.text(`VAT: ${formatCurrency(safeSummary.vat)}`, { indent: 20 });
+        
+        if (isNaN(doc.y) || doc.y < 0) doc.y = doc.y || 50;
         doc.text(`Sum incl. VAT: ${formatCurrency(safeSummary.sumInclVAT)}`, { indent: 20 });
 
+        // Validate before moveDown
+        if (isNaN(doc.y) || doc.y < 0) {
+          doc.y = 50;
+        }
         doc.moveDown(1.5);
 
-        // Conclusion
-        doc.fontSize(12).font("Helvetica-Bold").text("Conclusion", { underline: true });
+        // Conclusion - avoid underline to prevent NaN coordinate issues after table
+        // Validate doc.y before drawing
+        if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+          console.warn("⚠️ doc.y is invalid before Conclusion, resetting");
+          doc.y = 50;
+        }
+        const conclusionTitleY = doc.y;
+        doc.fontSize(12).font("Helvetica-Bold").text("Conclusion");
+        // Manually draw underline if coordinates are valid
+        if (!isNaN(conclusionTitleY) && conclusionTitleY >= 0 && !isNaN(doc.y) && doc.y >= 0) {
+          const textWidth = doc.widthOfString("Conclusion");
+          const startX = 50;
+          doc.moveTo(startX, doc.y - 2).lineTo(startX + textWidth, doc.y - 2).stroke();
+        }
         doc.moveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
