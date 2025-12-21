@@ -308,11 +308,16 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
 
         // Draw bottom line
         doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).stroke();
-        // Set doc.y explicitly after table to ensure it's valid
-        const finalTableY = currentY + 25; // Space after table
-        doc.y = isNaN(finalTableY) ? 50 : finalTableY;
-        // Use moveDown to ensure PDFKit's internal state is updated
-        doc.moveDown(2);
+        // Set doc.y explicitly after table to ensure it's valid for subsequent operations
+        // Don't use moveDown here as it may not work correctly after absolute positioning
+        const spacingAfterTable = 30;
+        const finalY = currentY + spacingAfterTable;
+        if (!isNaN(finalY) && finalY >= 0) {
+          doc.y = finalY;
+        } else {
+          console.warn("⚠️ Invalid finalY after table, resetting doc.y to 50");
+          doc.y = 50;
+        }
       } else {
         doc.text("No items added", { align: "left" });
         doc.moveDown(1);
