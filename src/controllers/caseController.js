@@ -93,6 +93,7 @@ exports.cancelCase = async (req, res) => {
   try {
     const { caseId } = req.params;
     const { cancellationReason } = req.body;
+    const { id: inspectorId } = req.user; // Get inspector ID for action logging
 
     if (!cancellationReason) {
       responseHandler.setError(400, "Cancellation reason is required.");
@@ -107,6 +108,18 @@ exports.cancelCase = async (req, res) => {
     }
 
     await caseService.logCaseEvent(caseId, "caseCancelled", `Case cancelled`);
+
+    // Log to ActionLog for inspector action logs (only if user is inspector)
+    if (req.user.userType === "inspector" && inspectorId) {
+      const { logInspectorAction } = require("../utils/logInspectorAction");
+      await logInspectorAction(
+        inspectorId,
+        "case_cancelled",
+        `Case ${caseId} cancelled: ${cancellationReason}`,
+        caseId,
+        { cancellationReason }
+      );
+    }
 
     responseHandler.setSuccess(200, "Case cancelled successfully.");
     return responseHandler.send(res);
@@ -156,6 +169,18 @@ exports.updateCaseStatus = async (req, res) => {
       "statusChange",
       `Case status changed to ${normalizedStatus}`
     );
+
+    // Log to ActionLog for inspector action logs (only if user is inspector and status is completed)
+    if (req.user.userType === "inspector" && normalizedStatus === "completed") {
+      const { id: inspectorId } = req.user;
+      const { logInspectorAction } = require("../utils/logInspectorAction");
+      await logInspectorAction(
+        inspectorId,
+        "case_completed",
+        `Case ${caseId} marked as completed`,
+        caseId
+      );
+    }
 
     responseHandler.setSuccess(200, "Case status updated successfully.");
     return responseHandler.send(res);
@@ -213,6 +238,15 @@ exports.releaseCase = async (req, res) => {
       caseId,
       "caseReleased",
       `Case released by inspector`
+    );
+
+    // Log to ActionLog for inspector action logs
+    const { logInspectorAction } = require("../utils/logInspectorAction");
+    await logInspectorAction(
+      inspectorId,
+      "case_released",
+      `Case ${caseId} released by inspector`,
+      caseId
     );
 
     responseHandler.setSuccess(
@@ -283,6 +317,16 @@ exports.reportAssessment = async (req, res) => {
       responseHandler.setError(500, "Failed to create report");
       return responseHandler.send(res);
     }
+
+    // Log to ActionLog for inspector action logs
+    const { logInspectorAction } = require("../utils/logInspectorAction");
+    await logInspectorAction(
+      id,
+      "report_submitted",
+      `Report submitted for case ${reportData.caseId}`,
+      reportData.caseId,
+      { reportId: newReport.reportId }
+    );
 
     responseHandler.setSuccess(201, "Assessment reported successfully", {
       reportId: newReport.reportId,

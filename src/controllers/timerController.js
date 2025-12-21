@@ -214,6 +214,16 @@ exports.startTimer = async (req, res) => {
       throw new Error(`Failed to create timer after all attempts: ${lastError?.message || 'Unknown error'}`);
     }
 
+    // Log to ActionLog for inspector action logs
+    const { logInspectorAction } = require("../utils/logInspectorAction");
+    await logInspectorAction(
+      inspectorId,
+      "timer_started",
+      `Timer started for case ${caseId}`,
+      caseId,
+      { timerId: newTimer.trackingId }
+    );
+
     responseHandler.setSuccess(200, "Timer started successfully", {
       timerId: newTimer.trackingId,
       startTime: newTimer.trackingTimeStart,
@@ -325,6 +335,16 @@ exports.stopTimer = async (req, res) => {
     const duration = Math.floor((endTime - new Date(activeTimer.trackingTimeStart)) / 1000); // seconds
     const minutes = Math.floor(duration / 60);
     const hours = Math.floor(minutes / 60);
+
+    // Log to ActionLog for inspector action logs
+    const { logInspectorAction } = require("../utils/logInspectorAction");
+    await logInspectorAction(
+      inspectorId,
+      "timer_stopped",
+      `Timer stopped for case ${caseId}. Duration: ${hours}h ${minutes % 60}m`,
+      caseId,
+      { timerId: activeTimer.trackingId, duration: { seconds: duration, minutes, hours } }
+    );
 
     responseHandler.setSuccess(200, "Timer stopped successfully", {
       timerId: activeTimer.trackingId,
