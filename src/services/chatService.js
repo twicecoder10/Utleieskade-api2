@@ -295,6 +295,29 @@ const getCaseConversation = async (caseId, inspectorId) => {
   };
 };
 
+const findOrCreateConversationByUserId = async (currentUserId, otherUserId) => {
+  // Find or create conversation
+  const conversation = await findOrCreateConversation(currentUserId, otherUserId);
+  
+  // Get user details
+  const [userOne, userTwo] = await Promise.all([
+    User.findOne({
+      where: { userId: conversation.userOne },
+      attributes: ["userId", "userFirstName", "userLastName", "userProfilePic"],
+    }),
+    User.findOne({
+      where: { userId: conversation.userTwo },
+      attributes: ["userId", "userFirstName", "userLastName", "userProfilePic"],
+    }),
+  ]);
+
+  return {
+    conversation,
+    userOneDetails: userOne,
+    userTwoDetails: userTwo,
+  };
+};
+
 module.exports = {
   getUserChats,
   sendMessage,
@@ -304,4 +327,5 @@ module.exports = {
   getChattableUsers,
   getCommunicationHistory,
   getCaseConversation,
+  findOrCreateConversationByUserId,
 };

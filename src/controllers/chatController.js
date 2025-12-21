@@ -132,3 +132,28 @@ exports.getCommunicationHistory = async (req, res) => {
     return responseHandler.send(res);
   }
 };
+
+exports.findOrCreateConversation = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const { userId } = req.body;
+
+    if (!userId) {
+      responseHandler.setError(400, "User ID is required");
+      return responseHandler.send(res);
+    }
+
+    const conversationData = await chatService.findOrCreateConversationByUserId(currentUserId, userId);
+
+    responseHandler.setSuccess(
+      200,
+      "Conversation found or created successfully",
+      conversationData
+    );
+    return responseHandler.send(res);
+  } catch (error) {
+    console.error("Error finding or creating conversation: ", error);
+    responseHandler.setError(500, error.message || "Internal server error!");
+    return responseHandler.send(res);
+  }
+};

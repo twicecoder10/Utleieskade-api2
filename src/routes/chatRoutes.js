@@ -236,4 +236,41 @@ router.get(
   chatController.getCaseConversation
 );
 
+/**
+ * @swagger
+ * /chats/find-or-create:
+ *   post:
+ *     summary: Find or create a conversation with a user
+ *     security:
+ *       - BearerAuth: []
+ *     tags: [Chat]
+ *     description: Finds an existing conversation or creates a new one between the current user and another user.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user to start a conversation with
+ *     responses:
+ *       200:
+ *         description: Conversation found or created successfully
+ *       400:
+ *         description: User ID is required
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/find-or-create",
+  authMiddleware,
+  chatController.findOrCreateConversation
+);
+
 module.exports = router;
