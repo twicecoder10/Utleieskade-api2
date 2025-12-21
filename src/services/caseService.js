@@ -424,7 +424,7 @@ const reportAssessment = async (reportData) => {
     }
 
     // Create assessment summary if provided
-    // Use upsert to handle existing records (update if exists, create if not)
+    // Use findOne then update or create to avoid duplicate key errors
     if (summary) {
       try {
         // Ensure all values are numbers, not NaN
@@ -438,22 +438,37 @@ const reportAssessment = async (reportData) => {
           total: Number(summary.total) || 0,
         };
 
-        // Use upsert - this will update if record exists (by reportId) or create if it doesn't
-        const [assessmentSummary, created] = await AssessmentSummary.upsert({
-          reportId: newReport.reportId,
-          totalHours: safeSummary.totalHours,
-          totalSumMaterials: safeSummary.totalSumMaterials,
-          totalSumLabor: safeSummary.totalSumLabor,
-          sumExclVAT: safeSummary.sumExclVAT,
-          vat: safeSummary.vat,
-          sumInclVAT: safeSummary.sumInclVAT,
-          total: safeSummary.total,
-        }, {
-          conflictFields: ['reportId'], // Use reportId to determine if record exists
-          returning: true,
+        // Find existing summary by reportId
+        const existingSummary = await AssessmentSummary.findOne({
+          where: { reportId: newReport.reportId },
         });
-        
-        console.log(`✅ Assessment summary ${created ? 'created' : 'updated'} for report ${newReport.reportId}`);
+
+        if (existingSummary) {
+          // Update existing record
+          await existingSummary.update({
+            totalHours: safeSummary.totalHours,
+            totalSumMaterials: safeSummary.totalSumMaterials,
+            totalSumLabor: safeSummary.totalSumLabor,
+            sumExclVAT: safeSummary.sumExclVAT,
+            vat: safeSummary.vat,
+            sumInclVAT: safeSummary.sumInclVAT,
+            total: safeSummary.total,
+          });
+          console.log(`✅ Assessment summary updated for report ${newReport.reportId}`);
+        } else {
+          // Create new record
+          await AssessmentSummary.create({
+            reportId: newReport.reportId,
+            totalHours: safeSummary.totalHours,
+            totalSumMaterials: safeSummary.totalSumMaterials,
+            totalSumLabor: safeSummary.totalSumLabor,
+            sumExclVAT: safeSummary.sumExclVAT,
+            vat: safeSummary.vat,
+            sumInclVAT: safeSummary.sumInclVAT,
+            total: safeSummary.total,
+          });
+          console.log(`✅ Assessment summary created for report ${newReport.reportId}`);
+        }
       } catch (summaryError) {
         console.error("Error upserting assessment summary:", summaryError);
         console.error("Summary error details:", {
