@@ -301,11 +301,20 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
 
         // Draw bottom line
         doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).stroke();
-        // Use relative positioning after table - let PDFKit manage doc.y
+        // Set doc.y explicitly after table to ensure it's valid
+        const finalTableY = currentY + 25; // Space after table
+        doc.y = isNaN(finalTableY) ? 50 : finalTableY;
+        // Use moveDown to ensure PDFKit's internal state is updated
         doc.moveDown(2);
       } else {
         doc.text("No items added", { align: "left" });
         doc.moveDown(1);
+      }
+
+      // Ensure doc.y is valid before continuing to Results section
+      if (isNaN(doc.y) || doc.y === undefined || doc.y === null || doc.y < 0) {
+        console.warn("⚠️ doc.y is invalid before Results section, resetting");
+        doc.y = 50; // Safe default
       }
 
       // Results Summary
@@ -321,7 +330,9 @@ const generateReportPDF = async (reportData, caseData, reportId) => {
           total: Number(reportData.summary.total) || 0,
         };
 
+        // Draw Results title with underline - doc.y should be valid now
         doc.fontSize(12).font("Helvetica-Bold").text("Results:", { underline: true });
+        doc.moveDown(0.5);
         doc.moveDown(0.5);
         doc.fontSize(10).font("Helvetica");
 
