@@ -72,9 +72,19 @@ async function createActionLogTable() {
             ADD COLUMN IF NOT EXISTS "inspectorId" VARCHAR(255);
           `);
           
-          // Create index on inspectorId
+          // Add caseId column if it doesn't exist (might be named targetCaseId in admin logs)
+          await sequelize.query(`
+            ALTER TABLE "ActionLog" 
+            ADD COLUMN IF NOT EXISTS "caseId" VARCHAR(255);
+          `);
+          
+          // Create indexes
           await sequelize.query(`
             CREATE INDEX IF NOT EXISTS "ActionLog_inspectorId_idx" ON "ActionLog" ("inspectorId");
+          `);
+          
+          await sequelize.query(`
+            CREATE INDEX IF NOT EXISTS "ActionLog_caseId_idx" ON "ActionLog" ("caseId");
           `);
         } else {
           // MySQL
@@ -84,11 +94,20 @@ async function createActionLogTable() {
           `);
           
           await sequelize.query(`
+            ALTER TABLE ActionLog 
+            ADD COLUMN IF NOT EXISTS caseId VARCHAR(255);
+          `);
+          
+          await sequelize.query(`
             CREATE INDEX IF NOT EXISTS ActionLog_inspectorId_idx ON ActionLog (inspectorId);
+          `);
+          
+          await sequelize.query(`
+            CREATE INDEX IF NOT EXISTS ActionLog_caseId_idx ON ActionLog (caseId);
           `);
         }
         
-        console.log("✅ Successfully added inspectorId column to ActionLog table");
+        console.log("✅ Successfully added inspectorId and caseId columns to ActionLog table");
         return;
       }
     }
